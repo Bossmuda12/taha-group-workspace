@@ -12,7 +12,7 @@ import {
   Headphones,
   Package,
   LogOut,
-  Sparkles,
+  UserCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,7 @@ const items: NavItem[] = [
   { href: "/dashboard/accounting", label: "Accounting", icon: Wallet },
   { href: "/dashboard/customer-service", label: "Customer Service", icon: Headphones },
   { href: "/dashboard/products", label: "Produk", icon: Package },
+  { href: "/dashboard/profile", label: "Profil Saya", icon: UserCircle2 },
 ];
 
 export function Sidebar({
@@ -66,7 +67,7 @@ export function Sidebar({
     <aside className="glass-dark fixed left-4 top-4 bottom-4 z-40 hidden w-64 flex-col rounded-4xl p-4 lg:flex">
       <div className="mb-6 flex items-center gap-2 px-2 pt-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-2xl glass-strong">
-          <Sparkles className="h-4 w-4 text-accent" />
+          <img src="/brand/logo-icon.png" alt="Taha Group" className="h-6 w-6 object-contain" />
         </div>
         <div>
           <p className="text-sm font-semibold text-white">Taha Group</p>
