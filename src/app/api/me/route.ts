@@ -1,0 +1,9 @@
+import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth";
+
+export async function GET() {
+  const user = await requireUser();
+  if (!user) return NextResponse.json(null, { status: 401 });
+  const { passwordHash, ...safe } = user;
+  return NextResponse.json(safe);
+}
