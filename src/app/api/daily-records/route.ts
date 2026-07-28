@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
 
   const where: any = {};
   if (session.role === "SUPERADMIN") {
@@ -15,12 +17,17 @@ export async function GET(req: NextRequest) {
   } else {
     where.userId = session.userId;
   }
+  if (from || to) {
+    where.date = {};
+    if (from) where.date.gte = new Date(from);
+    if (to) where.date.lte = new Date(`${to}T23:59:59.999Z`);
+  }
 
   const records = await prisma.dailyRecord.findMany({
     where,
     include: { user: true },
     orderBy: { date: "desc" },
-    take: 100,
+    take: 200,
   });
   return NextResponse.json(records);
 }
