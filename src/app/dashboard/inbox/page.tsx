@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Mail, Bell, Send, Plus } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -9,11 +10,12 @@ import { cn, formatDate, formatTime } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 type Msg = { id: string; subject: string; body: string; read: boolean; createdAt: string; sender: { fullName: string }; recipient: { fullName: string } };
-type Notif = { id: string; title: string; body: string; createdAt: string; status: string };
+type Notif = { id: string; title: string; body: string; link: string | null; read: boolean; createdAt: string; status: string };
 type Member = { id: string; fullName: string };
 
 export default function InboxPage() {
   const toast = useToast();
+  const router = useRouter();
   const [tab, setTab] = useState<"messages" | "notifications">("messages");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [notifs, setNotifs] = useState<Notif[]>([]);
@@ -97,7 +99,21 @@ export default function InboxPage() {
       ) : (
         <div className="space-y-3">
           {notifs.map((n) => (
-            <GlassCard key={n.id} className="p-4">
+            <GlassCard
+              key={n.id}
+              onClick={async () => {
+                if (!n.read) {
+                  await fetch("/api/notifications", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: n.id }),
+                  });
+                  setNotifs((list) => list.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+                }
+                if (n.link) router.push(n.link);
+              }}
+              className={cn("cursor-pointer p-4 transition hover:bg-white/5", !n.read && "border border-accent/30")}
+            >
               <div className="mb-1 flex items-center justify-between">
                 <p className="text-sm font-medium text-white">{n.title}</p>
                 <span className="text-xs text-white/30">{formatDate(n.createdAt)} · {formatTime(n.createdAt)}</span>
