@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 type NavItem = { href: string; label: string; icon: any; roles?: string[] };
 
 const items: NavItem[] = [
+  { href: "/dashboard/profile", label: "Profil Saya", icon: UserCircle2 },
   { href: "/dashboard", label: "Beranda", icon: LayoutDashboard },
   { href: "/dashboard/team", label: "Team Management", icon: Users2 },
   { href: "/dashboard/tasks", label: "Tugas", icon: ListChecks },
@@ -28,7 +29,6 @@ const items: NavItem[] = [
   { href: "/dashboard/accounting", label: "Accounting", icon: Wallet },
   { href: "/dashboard/customer-service", label: "Customer Service", icon: Headphones },
   { href: "/dashboard/products", label: "Produk", icon: Package },
-  { href: "/dashboard/profile", label: "Profil Saya", icon: UserCircle2 },
 ];
 
 export function Sidebar({

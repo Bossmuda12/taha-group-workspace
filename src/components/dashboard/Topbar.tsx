@@ -125,7 +125,7 @@ export function Topbar({
         </div>
 
         {searchOpen && query.trim().length >= 2 && (
-          <div className="glass-strong absolute left-0 top-12 z-40 w-80 rounded-3xl p-2 shadow-glass">
+          <div className="glass-strong absolute left-0 top-12 z-40 w-80 overflow-hidden rounded-3xl p-2 shadow-glass ring-1 ring-white/10 [background:linear-gradient(135deg,rgba(20,22,32,0.92),rgba(10,12,20,0.88))]">
             {!hasResults && !searching && (
               <p className="px-3 py-4 text-center text-xs text-white/40">Tidak ada hasil untuk "{query}"</p>
             )}
@@ -191,7 +191,7 @@ export function Topbar({
           </button>
 
           {notifOpen && (
-            <div className="glass-strong absolute right-0 top-12 z-40 w-80 rounded-3xl p-2 shadow-glass">
+            <div className="glass-strong absolute right-0 top-12 z-40 w-80 overflow-hidden rounded-3xl p-2 shadow-glass ring-1 ring-white/10 [background:linear-gradient(135deg,rgba(20,22,32,0.92),rgba(10,12,20,0.88))]">
               <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-white/30">Notifikasi</p>
               <div className="max-h-80 overflow-y-auto glass-scroll">
                 {notifs.length === 0 && <p className="px-3 py-6 text-center text-xs text-white/40">Belum ada notifikasi.</p>}
