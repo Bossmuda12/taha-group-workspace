@@ -71,6 +71,7 @@ Prioritas: ${priority || "MEDIUM"}
 
 ${description}`,
       channels: ["WHATSAPP", "EMAIL", "INBOX"],
+            link: "/dashboard/tasks",
     });
   }
 
