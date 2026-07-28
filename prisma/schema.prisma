@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN   // Induk / pemegang utama
+  DIVISION_HEAD
+  STAFF
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  OVERDUE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotifChannel {
+  WHATSAPP
+  EMAIL
+  INBOX
+}
+
+enum NotifStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Division {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  icon        String   @default("Building2")
+  color       String   @default("#0A84FF")
+  createdAt   DateTime @default(now())
+  users       User[]
+  tasks       Task[]
+  products    Product[]
+  isCore      Boolean  @default(false)
+}
+
+model User {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  fullName      String
+  address       String
+  whatsapp      String
+  email         String   @unique
+  passwordHash  String
+  position      String
+  role          Role     @default(STAFF)
+  status        String   @default("ACTIVE") // ACTIVE, PENDING, SUSPENDED
+  avatarColor   String   @default("#0A84FF")
+  divisionId    String?
+  division      Division? @relation(fields: [divisionId], references: [id])
+  createdAt     DateTime @default(now())
+
+  tasksAssigned   Task[]        @relation("AssignedTo")
+  tasksCreated    Task[]        @relation("CreatedBy")
+  dailyRecords    DailyRecord[]
+  advertisingRecords AdvertisingRecord[]
+  csRecords       CsRecord[]
+  accountingRecords AccountingRecord[]
+  payslips        Payslip[]
+  notifications   Notification[]
+  messagesSent    Message[]     @relation("MessageSender")
+  messagesReceived Message[]    @relation("MessageRecipient")
+  passwordResets  PasswordReset[]
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  code      String
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id           String       @id @default(cuid())
+  title        String
+  description  String
+  fileUrl      String?
+  fileName     String?
+  divisionId   String
+  division     Division     @relation(fields: [divisionId], references: [id])
+  assignedToId String?
+  assignedTo   User?        @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdById  String
+  createdBy    User         @relation("CreatedBy", fields: [createdById], references: [id])
+  status       TaskStatus   @default(TODO)
+  priority     TaskPriority @default(MEDIUM)
+  deadline     DateTime
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model DailyRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  date        DateTime
+  summary     String
+  hoursWorked Float    @default(0)
+  achievements String?
+  obstacles   String?
+  createdAt   DateTime @default(now())
+}
+
+model AdvertisingRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  date          DateTime
+  teamName      String
+  closingCount  Int      @default(0)
+  leadsCount    Int      @default(0)
+  adAccount     String
+  facebookName  String
+  spendBudget   Float    @default(0)
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model AccountingRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  date        DateTime
+  type        String   // OUTFLOW, PURCHASE, RECAP
+  category    String
+  description String
+  amount      Float
+  attachment  String?
+  createdAt   DateTime @default(now())
+}
+
+model Payslip {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  period     String   // e.g. "2026-07"
+  baseSalary Float
+  bonus      Float    @default(0)
+  deduction  Float    @default(0)
+  total      Float
+  fileUrl    String?
+  createdAt  DateTime @default(now())
+}
+
+model CsRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  date          DateTime
+  incomingChats Int      @default(0)
+  closingCount  Int      @default(0)
+  leadsCount    Int      @default(0)
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  obstacles     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  sku         String?
+  price       Float    @default(0)
+  divisionId  String?
+  division    Division? @relation(fields: [divisionId], references: [id])
+  isCustom    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  advertisingRecords AdvertisingRecord[]
+  csRecords   CsRecord[]
+}
+
+model Message {
+  id           String   @id @default(cuid())
+  senderId     String
+  sender       User     @relation("MessageSender", fields: [senderId], references: [id])
+  recipientId  String
+  recipient    User     @relation("MessageRecipient", fields: [recipientId], references: [id])
+  subject      String
+  body         String
+  read         Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model Notification {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  channel   NotifChannel
+  title     String
+  body      String
+  status    NotifStatus  @default(PENDING)
+  meta      String?
+  createdAt DateTime     @default(now())
+  sentAt    DateTime?
+}
