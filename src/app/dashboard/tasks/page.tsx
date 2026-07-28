@@ -6,8 +6,10 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput, GlassLabel, GlassSelect, GlassTextarea } from "@/components/ui/GlassInput";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { Badge } from "@/components/ui/Badge";
+import { StatusSelect } from "@/components/ui/StatusSelect";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/Confirm";
 
 type Division = { id: string; name: string };
 type Member = { id: string; fullName: string; divisionId: string | null };
@@ -21,6 +23,7 @@ const STATUSES = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"];
 
 export default function TasksPage() {
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -90,8 +93,14 @@ export default function TasksPage() {
   }
 
   async function removeTask(id: string) {
-    if (!confirm("Hapus tugas ini?")) return;
+    const ok = await confirmDialog({
+      title: "Hapus Tugas",
+      message: "Tugas ini akan dihapus permanen dan tidak bisa dikembalikan.",
+      confirmLabel: "Hapus",
+    });
+    if (!ok) return;
     await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    toast("Tugas dihapus");
     load();
   }
 
@@ -149,15 +158,7 @@ export default function TasksPage() {
                           <Paperclip className="h-3 w-3" /> {t.fileName}
                         </a>
                       )}
-                      <select
-                        value={t.status}
-                        onChange={(e) => updateStatus(t.id, e.target.value)}
-                        className="w-full rounded-xl glass-pill px-3 py-2 text-xs text-white outline-none"
-                      >
-                        {STATUSES.map((s) => (
-                          <option key={s} value={s} className="bg-ink-800">{s}</option>
-                        ))}
-                      </select>
+                      <StatusSelect value={t.status} onChange={(v) => updateStatus(t.id, v)} options={STATUSES} />
                     </GlassCard>
                   );
                 })}
