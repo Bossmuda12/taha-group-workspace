@@ -9,15 +9,16 @@ export async function notifyUser(opts: {
     title: string;
     body: string;
     channels?: ("WHATSAPP" | "EMAIL" | "INBOX")[];
+      link?: string;
 }) {
-    const { userId, title, body } = opts;
+      const { userId, title, body, link } = opts;
     const channels = opts.channels ?? ["WHATSAPP", "EMAIL", "INBOX"];
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return;
 
   for (const channel of channels) {
         const record = await prisma.notification.create({
-                data: { userId, channel: channel as any, title, body, status: "PENDING" },
+                        data: { userId, channel: channel as any, title, body, link: link ?? null, status: "PENDING" },
         });
 
       let result: { ok: boolean; reason?: string } = { ok: true };
