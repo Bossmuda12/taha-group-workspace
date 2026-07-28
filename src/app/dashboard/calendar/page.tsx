@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Clock3, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock3, FileText, CalendarRange, Sparkles, AlertCircle } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput, GlassLabel, GlassTextarea } from "@/components/ui/GlassInput";
+import { GlassModal } from "@/components/ui/GlassModal";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
@@ -21,6 +22,7 @@ export default function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [form, setForm] = useState({ summary: "", hoursWorked: "", achievements: "", obstacles: "" });
   const [range, setRange] = useState({ from: "", to: "" });
+  const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
 
   async function load(customRange?: { from: string; to: string }) {
     const r = customRange ?? range;
@@ -179,25 +181,26 @@ export default function CalendarPage() {
       <GlassCard className="p-5">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-white">Riwayat Laporan</p>
-          <form onSubmit={applyRange} className="flex flex-wrap items-center gap-2">
+          <form onSubmit={applyRange} className="flex flex-wrap items-center gap-2 rounded-2xl glass-pill px-3 py-2">
+            <CalendarRange className="h-3.5 w-3.5 shrink-0 text-accent" />
             <input
               type="date"
               value={range.from}
               onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
-              className="rounded-xl glass-pill px-3 py-1.5 text-xs text-white outline-none"
+              className="rounded-lg bg-transparent px-1 py-1 text-xs text-white outline-none [color-scheme:dark]"
             />
-            <span className="text-xs text-white/40">s/d</span>
+            <span className="text-xs text-white/30">s/d</span>
             <input
               type="date"
               value={range.to}
               onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
-              className="rounded-xl glass-pill px-3 py-1.5 text-xs text-white outline-none"
+              className="rounded-lg bg-transparent px-1 py-1 text-xs text-white outline-none [color-scheme:dark]"
             />
-            <button type="submit" className="rounded-xl bg-accent/20 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/30">
+            <button type="submit" className="rounded-xl bg-gradient-to-b from-accent to-[#0066CC] px-3 py-1.5 text-xs font-medium text-white shadow-glow transition hover:brightness-110">
               Terapkan
             </button>
             {(range.from || range.to) && (
-              <button type="button" onClick={resetRange} className="rounded-xl px-3 py-1.5 text-xs text-white/40 hover:text-white/70">
+              <button type="button" onClick={resetRange} className="rounded-xl px-2 py-1.5 text-xs text-white/40 hover:text-white/70">
                 Reset
               </button>
             )}
@@ -205,17 +208,62 @@ export default function CalendarPage() {
         </div>
         <div className="space-y-2">
           {records.map((r) => (
-            <div key={r.id} className="rounded-2xl glass-pill p-4">
+            <button
+              key={r.id}
+              onClick={() => setSelectedRecord(r)}
+              className="block w-full rounded-2xl glass-pill p-4 text-left transition hover:bg-white/10"
+            >
               <div className="mb-1 flex items-center justify-between">
                 <p className="text-sm font-medium text-white">{r.user?.fullName} · {formatDate(r.date)}</p>
                 <span className="flex items-center gap-1 text-xs text-white/40"><Clock3 className="h-3 w-3" /> {r.hoursWorked} jam</span>
               </div>
-              <p className="text-xs text-white/60">{r.summary}</p>
-            </div>
+              <p className="line-clamp-1 text-xs text-white/60">{r.summary}</p>
+            </button>
           ))}
           {records.length === 0 && <p className="text-sm text-white/30">Belum ada laporan.</p>}
         </div>
       </GlassCard>
+
+      <GlassModal
+        open={!!selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+        title="Detail Laporan Harian"
+        maxWidth="max-w-lg"
+      >
+        {selectedRecord && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-2xl glass-pill px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-white">{selectedRecord.user?.fullName}</p>
+                <p className="text-xs text-white/40">{formatDate(selectedRecord.date)}</p>
+              </div>
+              <span className="flex items-center gap-1 text-xs text-accent"><Clock3 className="h-3.5 w-3.5" /> {selectedRecord.hoursWorked} jam</span>
+            </div>
+            <div>
+              <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/40">
+                <FileText className="h-3.5 w-3.5" /> Ringkasan Pekerjaan
+              </p>
+              <p className="rounded-2xl glass-pill p-4 text-sm text-white/80">{selectedRecord.summary}</p>
+            </div>
+            {selectedRecord.achievements && (
+              <div>
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/40">
+                  <Sparkles className="h-3.5 w-3.5 text-accent-green" /> Pencapaian
+                </p>
+                <p className="rounded-2xl glass-pill p-4 text-sm text-white/80">{selectedRecord.achievements}</p>
+              </div>
+            )}
+            {selectedRecord.obstacles && (
+              <div>
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/40">
+                  <AlertCircle className="h-3.5 w-3.5 text-accent-orange" /> Kendala
+                </p>
+                <p className="rounded-2xl glass-pill p-4 text-sm text-white/80">{selectedRecord.obstacles}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </GlassModal>
     </div>
   );
 }
