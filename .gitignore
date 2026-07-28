@@ -1,0 +1,9 @@
+node_modules/
+.next/
+dev.db
+dev.db-journal
+wa-session/
+.env
+*.log
+public/uploads/*
+!public/uploads/.gitkeep
