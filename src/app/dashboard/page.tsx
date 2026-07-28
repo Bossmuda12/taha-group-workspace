@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/Badge";
-import { ListChecks, Users2, Clock3, AlertTriangle, Building2 } from "lucide-react";
+import { ListChecks, Users2, Clock3, AlertTriangle, Building2, UserCheck } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 
@@ -14,7 +14,7 @@ export default async function DashboardHome() {
   const isAdmin = user.role === "SUPERADMIN";
   const taskWhere = isAdmin ? {} : { OR: [{ assignedToId: user.id }, { divisionId: user.divisionId ?? "" }] };
 
-  const [totalTasks, doneTasks, overdueTasks, totalEmployees, divisions, upcoming] = await Promise.all([
+    const [totalTasks, doneTasks, overdueTasks, totalEmployees, divisions, upcoming, pendingCount] = await Promise.all([
     prisma.task.count({ where: taskWhere }),
     prisma.task.count({ where: { ...taskWhere, status: "DONE" } }),
     prisma.task.count({ where: { ...taskWhere, deadline: { lt: new Date() }, status: { not: "DONE" } } }),
@@ -26,10 +26,23 @@ export default async function DashboardHome() {
       take: 5,
       include: { division: true, assignedTo: true },
     }),
+          isAdmin ? prisma.user.count({ where: { status: "PENDING" } }) : Promise.resolve(0),
   ]);
 
   return (
     <div className="space-y-6">
+            {isAdmin && pendingCount > 0 && (
+        <Link href="/dashboard/team?pending=1" className="block">
+          <GlassCard className="border border-accent-orange/30 p-4 transition hover:bg-white/5">
+            <p className="flex items-center gap-2 text-sm text-accent-orange">
+              <UserCheck className="h-4 w-4" />
+              {pendingCount} karyawan menunggu aktivasi akun. Klik untuk review.
+            </p>
+          </GlassCard>
+        </Link>
+      )}
+
+
       <GlassCard strong className="animate-fade-up overflow-hidden p-6 sm:p-8">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
