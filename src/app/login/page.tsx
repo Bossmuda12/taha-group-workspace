@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Lock, User, Eye, EyeOff, Sparkles, ArrowRight, X } from "lucide-react";
+import { Lock, User, Eye, EyeOff, ArrowRight, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput } from "@/components/ui/GlassInput";
@@ -98,7 +98,7 @@ export default function LoginPage() {
       <GlassCard strong className="w-full max-w-md animate-scale-in rounded-5xl p-8 sm:p-10">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl glass-strong shadow-glow">
-            <Sparkles className="h-7 w-7 text-accent" />
+            <img src="/brand/logo-icon.png" alt="Taha Group" className="h-9 w-9 object-contain" />
           </div>
           <h1 className="text-2xl font-semibold text-white">Taha Group</h1>
           <p className="mt-1 text-sm text-white/50">Work Space Portal Karyawan</p>
