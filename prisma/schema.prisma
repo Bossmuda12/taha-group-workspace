@@ -212,6 +212,8 @@ model Notification {
   user      User         @relation(fields: [userId], references: [id])
   channel   NotifChannel
   title     String
+  link      String?
+  read      Boolean @default(false)
   body      String
   status    NotifStatus  @default(PENDING)
   meta      String?
