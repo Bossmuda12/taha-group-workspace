@@ -11,6 +11,8 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { Badge } from "@/components/ui/Badge";
 import { initials } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/Confirm";
+import { MemberModal } from "@/components/dashboard/MemberModal";
 
 type Division = { id: string; name: string; description: string | null; color: string; _count: { users: number; tasks: number } };
 type Member = {
@@ -20,6 +22,7 @@ type Member = {
 
 export default function TeamPage() {
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const searchParams = useSearchParams();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -28,6 +31,7 @@ export default function TeamPage() {
   const [pendingOpen, setPendingOpen] = useState(false);
   const [newDivision, setNewDivision] = useState({ name: "", description: "" });
   const [loading, setLoading] = useState(true);
+  const [activeMember, setActiveMember] = useState<Member | null>(null);
 
   async function load() {
     setLoading(true);
@@ -79,7 +83,12 @@ export default function TeamPage() {
   }
 
   async function removeMember(id: string) {
-    if (!confirm("Hapus karyawan ini?")) return;
+    const ok = await confirmDialog({
+      title: "Hapus Karyawan",
+      message: "Data karyawan ini akan dihapus permanen dari sistem.",
+      confirmLabel: "Hapus",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast("Karyawan dihapus");
@@ -145,7 +154,11 @@ export default function TeamPage() {
                 <div className="space-y-3 border-t border-white/10 p-5">
                   {divMembers.length === 0 && <p className="text-sm text-white/40">Belum ada anggota di divisi ini.</p>}
                   {divMembers.map((m) => (
-                    <div key={m.id} className="flex flex-col gap-3 rounded-2xl glass-pill p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div
+                      key={m.id}
+                      onClick={() => setActiveMember(m)}
+                      className="flex cursor-pointer flex-col gap-3 rounded-2xl glass-pill p-4 transition hover:bg-white/10 sm:flex-row sm:items-center sm:justify-between"
+                    >
                       <div className="flex items-center gap-3">
                         <div
                           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
@@ -167,7 +180,7 @@ export default function TeamPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 self-end sm:self-center">
+                      <div className="flex gap-2 self-end sm:self-center" onClick={(e) => e.stopPropagation()}>
                         {m.status !== "ACTIVE" && (
                           <button onClick={() => updateStatus(m.id, "ACTIVE")} className="rounded-full bg-accent-green/20 p-2 text-accent-green hover:bg-accent-green/30">
                             <Check className="h-4 w-4" />
@@ -193,16 +206,31 @@ export default function TeamPage() {
         {unassigned.length > 0 && (
           <GlassCard className="p-5">
             <p className="mb-3 text-sm font-medium text-white/70">Belum Ditempatkan ({unassigned.length})</p>
+            <p className="mb-3 text-xs text-white/30">Klik untuk lihat profil, ubah data, atau tempatkan ke divisi.</p>
             <div className="space-y-2">
               {unassigned.map((m) => (
-                <div key={m.id} className="flex items-center justify-between rounded-2xl glass-pill p-3">
+                <button
+                  key={m.id}
+                  onClick={() => setActiveMember(m)}
+                  className="flex w-full items-center justify-between rounded-2xl glass-pill p-3 text-left transition hover:bg-white/10"
+                >
                   <span className="text-sm text-white/80">{m.fullName} · {m.position}</span>
                   <Badge value={m.status} />
-                </div>
+                </button>
               ))}
             </div>
           </GlassCard>
         )}
+
+        <MemberModal
+          member={activeMember}
+          divisions={divisions}
+          onClose={() => setActiveMember(null)}
+          onUpdated={() => {
+            setActiveMember(null);
+            load();
+          }}
+        />
       </div>
 
       <GlassModal open={addOpen} onClose={() => setAddOpen(false)} title="Tambah Divisi Baru">
