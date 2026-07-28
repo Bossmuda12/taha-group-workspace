@@ -11,14 +11,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect("/login");
 
   const notifCount = await prisma.notification.count({
-    where: { userId: user.id, channel: "INBOX", status: "SENT" },
+        where: { userId: user.id, channel: "INBOX", status: "SENT", read: false },
   });
 
   return (
     <ToastProvider>
       <WelcomeScreen fullName={user.fullName} />
       <Sidebar role={user.role} divisionName={user.division?.name ?? null} />
-      <div className="min-h-screen px-4 pb-10 pt-4 lg:pl-[17rem] lg:pr-6">
+            <div className="min-h-screen px-4 pb-10 pt-4 lg:pl-[18.5rem] lg:pr-8">
         <Topbar
           fullName={user.fullName}
           position={user.position}
