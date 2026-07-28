@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     title: `Slip Gaji Periode ${period}`,
     body: `Slip gaji Anda untuk periode ${period} telah terbit. Total: Rp ${total.toLocaleString("id-ID")}`,
     channels: ["EMAIL", "INBOX"],
+        link: "/dashboard/inbox",
   });
 
   return NextResponse.json(payslip);
