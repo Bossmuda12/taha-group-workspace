@@ -22,6 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       title: "Akun Anda telah diaktifkan",
       body: `Selamat, akun Taha Group Work Space Anda sudah aktif. Silakan masuk menggunakan username "${user.username}".`,
       channels: ["WHATSAPP", "EMAIL", "INBOX"],
+            link: "/dashboard",
     });
   }
 
