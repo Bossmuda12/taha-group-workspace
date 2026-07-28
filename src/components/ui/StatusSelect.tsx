@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,24 +21,60 @@ export function StatusSelect({
   options?: string[];
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const list = options || Object.keys(META);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        btnRef.current &&
+        !btnRef.current.contains(e.target as Node) &&
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    function updateRect() {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setRect({ top: r.bottom + 6, left: r.left, width: r.width });
+    }
+    updateRect();
+    window.addEventListener("scroll", updateRect, true);
+    window.addEventListener("resize", updateRect);
+    return () => {
+      window.removeEventListener("scroll", updateRect, true);
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [open]);
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setRect({ top: r.bottom + 6, left: r.left, width: r.width });
+    }
+    setOpen((o) => !o);
+  }
+
   const current = META[value] || { label: value, dot: "bg-white/50", text: "text-white/70" };
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className="flex w-full items-center justify-between gap-2 rounded-xl glass-pill px-3 py-2 text-xs font-medium text-white transition hover:bg-white/10"
       >
         <span className="flex items-center gap-2">
@@ -47,34 +84,40 @@ export function StatusSelect({
         <ChevronDown className={cn("h-3.5 w-3.5 text-white/40 transition-transform", open && "rotate-180")} />
       </button>
 
-      {open && (
-        <div className="glass-strong absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-2xl p-1.5 shadow-glass">
-          {list.map((s) => {
-            const meta = META[s] || { label: s, dot: "bg-white/50", text: "text-white/70" };
-            const active = s === value;
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  onChange(s);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs transition hover:bg-white/10",
-                  active ? "bg-white/10" : ""
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
-                  <span className={meta.text}>{meta.label}</span>
-                </span>
-                {active && <Check className="h-3.5 w-3.5 text-accent" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
+      {mounted && open && rect &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ position: "fixed", top: rect.top, left: rect.left, width: rect.width, zIndex: 9999 }}
+            className="glass-strong overflow-hidden rounded-2xl p-1.5 shadow-glass ring-1 ring-white/10 [background:linear-gradient(135deg,rgba(28,30,42,0.97),rgba(14,16,26,0.97))]"
+          >
+            {list.map((s) => {
+              const meta = META[s] || { label: s, dot: "bg-white/50", text: "text-white/70" };
+              const active = s === value;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => {
+                    onChange(s);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs transition hover:bg-white/10",
+                    active ? "bg-white/10" : ""
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
+                    <span className={meta.text}>{meta.label}</span>
+                  </span>
+                  {active && <Check className="h-3.5 w-3.5 text-accent" />}
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
