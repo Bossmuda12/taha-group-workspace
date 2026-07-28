@@ -1,10 +1,4 @@
 "use client";
-import { Bell, Menu, Search } from "lucide-react";
-import { GlassClock } from "@/components/ui/GlassClock";
-import { initials } from "@/lib/utils";
-import { useState } from "react";
-import { MobileNav } from "./MobileNav";
-"use client";
 import { Bell, Menu, Search, ListChecks, User2, FileText, Loader2 } from "lucide-react";
 import { GlassClock } from "@/components/ui/GlassClock";
 import { initials } from "@/lib/utils";
