@@ -65,6 +65,7 @@ model User {
   role          Role     @default(STAFF)
   status        String   @default("ACTIVE") // ACTIVE, PENDING, SUSPENDED
   avatarColor   String   @default("#0A84FF")
+avatarUrl     String?
   divisionId    String?
   division      Division? @relation(fields: [divisionId], references: [id])
   createdAt     DateTime @default(now())
