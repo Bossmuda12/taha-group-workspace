@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
-  Building2, ChevronDown, MapPin, Phone, Mail, Plus, Check, Ban, Trash2, Crown,
+  Building2, ChevronDown, MapPin, Phone, Mail, Plus, Check, Ban, Trash2, Crown, UserCheck,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -19,10 +20,12 @@ type Member = {
 
 export default function TeamPage() {
   const toast = useToast();
+  const searchParams = useSearchParams();
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [openDivision, setOpenDivision] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [pendingOpen, setPendingOpen] = useState(false);
   const [newDivision, setNewDivision] = useState({ name: "", description: "" });
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +43,10 @@ export default function TeamPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (searchParams?.get("pending") === "1") setPendingOpen(true);
+  }, [searchParams]);
 
   async function addDivision(e: React.FormEvent) {
     e.preventDefault();
@@ -81,6 +88,7 @@ export default function TeamPage() {
   }
 
   const unassigned = members.filter((m) => !m.divisionId);
+  const pendingMembers = members.filter((m) => m.status === "PENDING");
 
   return (
     <div className="space-y-6">
@@ -94,12 +102,18 @@ export default function TeamPage() {
         </GlassButton>
       </div>
 
-      {members.some((m) => m.status === "PENDING") && (
-        <GlassCard className="border border-accent-orange/30 p-4">
-          <p className="text-sm text-accent-orange">
-            {members.filter((m) => m.status === "PENDING").length} karyawan menunggu aktivasi akun.
-          </p>
-        </GlassCard>
+      {pendingMembers.length > 0 && (
+        <button
+          onClick={() => setPendingOpen(true)}
+          className="block w-full text-left"
+        >
+          <GlassCard className="border border-accent-orange/30 p-4 transition hover:bg-white/5">
+            <p className="flex items-center gap-2 text-sm text-accent-orange">
+              <UserCheck className="h-4 w-4" />
+              {pendingMembers.length} karyawan menunggu aktivasi akun. Klik untuk review.
+            </p>
+          </GlassCard>
+        </button>
       )}
 
       <div className="space-y-4">
@@ -203,6 +217,49 @@ export default function TeamPage() {
           </div>
           <GlassButton type="submit" className="w-full">Simpan Divisi</GlassButton>
         </form>
+      </GlassModal>
+
+      <GlassModal open={pendingOpen} onClose={() => setPendingOpen(false)} title="Karyawan Menunggu Aktivasi" maxWidth="max-w-xl">
+        <div className="space-y-3">
+          {pendingMembers.length === 0 && <p className="text-sm text-white/40">Tidak ada karyawan yang menunggu aktivasi.</p>}
+          {pendingMembers.map((m) => (
+            <div key={m.id} className="flex flex-col gap-3 rounded-2xl glass-pill p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ background: m.avatarColor }}
+                >
+                  {initials(m.fullName)}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">{m.fullName}</p>
+                  <p className="text-xs text-white/40">{m.position} · @{m.username}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/50">
+                    <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {m.whatsapp}</span>
+                    <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {m.email}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 self-end sm:self-center">
+                <GlassButton
+                  variant="secondary"
+                  className="!px-4 !py-2 !text-xs"
+                  onClick={async () => {
+                    await updateStatus(m.id, "ACTIVE");
+                  }}
+                >
+                  <Check className="h-3.5 w-3.5" /> Aktifkan
+                </GlassButton>
+                <button
+                  onClick={() => removeMember(m.id)}
+                  className="rounded-full bg-accent-pink/20 p-2 text-accent-pink hover:bg-accent-pink/30"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </GlassModal>
     </div>
   );
