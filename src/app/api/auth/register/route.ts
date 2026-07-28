@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
         title: "Pendaftaran Karyawan Baru",
         body: `${fullName} (${position}) baru saja mendaftar dengan username "${username}". Silakan aktivasi akun di Team Management.`,
         channels: ["INBOX", "EMAIL"],
+                link: "/dashboard/team?pending=1",
       });
     }
 
