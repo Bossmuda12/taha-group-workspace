@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
 
 ${body}`,
     channels: ["INBOX"],
+        link: "/dashboard/inbox",
   });
 
   return NextResponse.json(message);
