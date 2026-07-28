@@ -20,16 +20,33 @@ export default function CalendarPage() {
   const [records, setRecords] = useState<Record[]>([]);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [form, setForm] = useState({ summary: "", hoursWorked: "", achievements: "", obstacles: "" });
+  const [range, setRange] = useState({ from: "", to: "" });
 
-  async function load() {
-    const [t, r] = await Promise.all([
+  async function load(customRange?: { from: string; to: string }) {
+    const r = customRange ?? range;
+    const params = new URLSearchParams();
+    if (r.from) params.set("from", r.from);
+    if (r.to) params.set("to", r.to);
+    const query = params.toString();
+    const [t, records] = await Promise.all([
       fetch("/api/tasks").then((res) => res.json()),
-      fetch("/api/daily-records").then((res) => res.json()),
+      fetch(`/api/daily-records${query ? `?${query}` : ""}`).then((res) => res.json()),
     ]);
     setTasks(t);
-    setRecords(r);
+    setRecords(records);
   }
   useEffect(() => { load(); }, []);
+
+  function applyRange(e: React.FormEvent) {
+    e.preventDefault();
+    load(range);
+  }
+
+  function resetRange() {
+    const cleared = { from: "", to: "" };
+    setRange(cleared);
+    load(cleared);
+  }
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -160,7 +177,32 @@ export default function CalendarPage() {
       </div>
 
       <GlassCard className="p-5">
-        <p className="mb-4 text-sm font-semibold text-white">Riwayat Laporan</p>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-white">Riwayat Laporan</p>
+          <form onSubmit={applyRange} className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={range.from}
+              onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
+              className="rounded-xl glass-pill px-3 py-1.5 text-xs text-white outline-none"
+            />
+            <span className="text-xs text-white/40">s/d</span>
+            <input
+              type="date"
+              value={range.to}
+              onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
+              className="rounded-xl glass-pill px-3 py-1.5 text-xs text-white outline-none"
+            />
+            <button type="submit" className="rounded-xl bg-accent/20 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/30">
+              Terapkan
+            </button>
+            {(range.from || range.to) && (
+              <button type="button" onClick={resetRange} className="rounded-xl px-3 py-1.5 text-xs text-white/40 hover:text-white/70">
+                Reset
+              </button>
+            )}
+          </form>
+        </div>
         <div className="space-y-2">
           {records.map((r) => (
             <div key={r.id} className="rounded-2xl glass-pill p-4">
