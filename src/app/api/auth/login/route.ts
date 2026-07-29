@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       role: user.role as any,
       divisionId: user.divisionId,
+      secondDivisionId: user.secondDivisionId,
       fullName: user.fullName,
       username: user.username,
     });
