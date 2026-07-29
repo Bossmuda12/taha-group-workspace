@@ -12,6 +12,7 @@ type Division = { id: string; name: string };
 type Member = {
   id: string; username: string; fullName: string; address: string; whatsapp: string;
   email: string; position: string; role: string; status: string; avatarColor: string; divisionId: string | null;
+  secondDivisionId?: string | null;
 };
 
 export function MemberModal({
@@ -26,7 +27,7 @@ export function MemberModal({
   onUpdated: () => void;
 }) {
   const toast = useToast();
-  const [form, setForm] = useState({ fullName: "", whatsapp: "", address: "", position: "", divisionId: "" });
+  const [form, setForm] = useState({ fullName: "", whatsapp: "", address: "", position: "", divisionId: "", secondDivisionId: "" });
   const [saving, setSaving] = useState(false);
   const [pw, setPw] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
@@ -39,6 +40,7 @@ export function MemberModal({
         address: member.address,
         position: member.position,
         divisionId: member.divisionId || "",
+        secondDivisionId: member.secondDivisionId || "",
       });
       setPw("");
     }
@@ -49,10 +51,15 @@ export function MemberModal({
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    if (form.secondDivisionId && form.secondDivisionId === form.divisionId) {
+      setSaving(false);
+      toast("Divisi kedua tidak boleh sama dengan divisi utama", "error");
+      return;
+    }
     const res = await fetch(`/api/users/${member!.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, divisionId: form.divisionId || null }),
+      body: JSON.stringify({ ...form, divisionId: form.divisionId || null, secondDivisionId: form.secondDivisionId || null }),
     });
     setSaving(false);
     if (res.ok) {
@@ -117,15 +124,27 @@ export function MemberModal({
             <GlassInput value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
           </div>
         </div>
-        <div>
-          <GlassLabel>Divisi</GlassLabel>
-          <GlassSelect value={form.divisionId} onChange={(e) => setForm((f) => ({ ...f, divisionId: e.target.value }))}>
-            <option value="" className="bg-ink-800">Belum ditempatkan</option>
-            {divisions.map((d) => (
-              <option key={d.id} value={d.id} className="bg-ink-800">{d.name}</option>
-            ))}
-          </GlassSelect>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <GlassLabel>Divisi Utama</GlassLabel>
+            <GlassSelect value={form.divisionId} onChange={(e) => setForm((f) => ({ ...f, divisionId: e.target.value }))}>
+              <option value="" className="bg-ink-800">Belum ditempatkan</option>
+              {divisions.map((d) => (
+                <option key={d.id} value={d.id} className="bg-ink-800">{d.name}</option>
+              ))}
+            </GlassSelect>
+          </div>
+          <div>
+            <GlassLabel>Divisi Kedua (opsional)</GlassLabel>
+            <GlassSelect value={form.secondDivisionId} onChange={(e) => setForm((f) => ({ ...f, secondDivisionId: e.target.value }))}>
+              <option value="" className="bg-ink-800">Tidak ada</option>
+              {divisions.filter((d) => d.id !== form.divisionId).map((d) => (
+                <option key={d.id} value={d.id} className="bg-ink-800">{d.name}</option>
+              ))}
+            </GlassSelect>
+          </div>
         </div>
+        <p className="-mt-2 text-xs text-white/30">Karyawan dengan divisi kedua mendapat akses dashboard penuh ke kedua divisi.</p>
         <GlassButton type="submit" loading={saving}>
           <Save className="h-4 w-4" /> Simpan Perubahan
         </GlassButton>

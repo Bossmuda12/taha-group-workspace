@@ -7,11 +7,13 @@ export function MobileNav({
   onClose,
   role,
   divisionName,
+  secondDivisionName,
 }: {
   open: boolean;
   onClose: () => void;
   role: string;
   divisionName: string | null;
+  secondDivisionName?: string | null;
 }) {
   if (!open) return null;
   return (
@@ -22,7 +24,7 @@ export function MobileNav({
           <X className="h-4 w-4" />
         </button>
         <div className="relative h-full [&>aside]:relative [&>aside]:inset-0 [&>aside]:flex [&>aside]:h-full">
-          <Sidebar role={role} divisionName={divisionName} />
+          <Sidebar role={role} divisionName={divisionName} secondDivisionName={secondDivisionName} />
         </div>
       </div>
     </div>

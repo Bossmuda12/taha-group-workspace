@@ -22,6 +22,7 @@ export function Topbar({
   avatarUrl,
   role,
   divisionName,
+  secondDivisionName,
   notifCount,
 }: {
   fullName: string;
@@ -30,6 +31,7 @@ export function Topbar({
   avatarUrl?: string | null;
   role: string;
   divisionName: string | null;
+  secondDivisionName?: string | null;
   notifCount: number;
 }) {
   const router = useRouter();
@@ -234,7 +236,7 @@ export function Topbar({
         </Link>
       </div>
 
-      <MobileNav open={mobileOpen} onClose={() => setMobileOpen(false)} role={role} divisionName={divisionName} />
+      <MobileNav open={mobileOpen} onClose={() => setMobileOpen(false)} role={role} divisionName={divisionName} secondDivisionName={secondDivisionName} />
     </header>
   );
 }

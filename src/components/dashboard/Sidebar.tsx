@@ -36,30 +36,31 @@ const items: NavItem[] = [
 export function Sidebar({
   role,
   divisionName,
+  secondDivisionName,
 }: {
   role: string;
   divisionName: string | null;
+  secondDivisionName?: string | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Karyawan rangkap divisi dapat akses penuh ke kedua divisinya.
+  const names = [divisionName, secondDivisionName].filter(Boolean).map((n) => n!.toLowerCase());
+  const has = (keyword: string) => names.some((n) => n.includes(keyword));
+
   const visible = items.filter((item) => {
     if (item.href === "/dashboard/advertising") {
-      return role === "SUPERADMIN" || divisionName?.toLowerCase().includes("advertising");
+      return role === "SUPERADMIN" || has("advertising");
     }
     if (item.href === "/dashboard/accounting") {
-      return role === "SUPERADMIN" || divisionName?.toLowerCase().includes("acounting") || divisionName?.toLowerCase().includes("accounting");
+      return role === "SUPERADMIN" || has("acounting") || has("accounting");
     }
     if (item.href === "/dashboard/customer-service") {
-      return role === "SUPERADMIN" || divisionName?.toLowerCase().includes("costumer") || divisionName?.toLowerCase().includes("customer");
+      return role === "SUPERADMIN" || has("costumer") || has("customer");
     }
     if (item.href === "/dashboard/cs-performance") {
-      return (
-        role === "SUPERADMIN" ||
-        divisionName?.toLowerCase().includes("management admin") ||
-        divisionName?.toLowerCase().includes("costumer") ||
-        divisionName?.toLowerCase().includes("customer")
-      );
+      return role === "SUPERADMIN" || has("management admin") || has("costumer") || has("customer");
     }
     if (item.href === "/dashboard/team" || item.href === "/dashboard/products") {
       return role === "SUPERADMIN" || role === "DIVISION_HEAD";
