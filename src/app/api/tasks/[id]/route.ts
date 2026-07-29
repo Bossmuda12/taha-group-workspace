@@ -13,6 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       assignedTo: true,
       createdBy: true,
       attachments: { include: { uploadedBy: true }, orderBy: { createdAt: "desc" } },
+      comments: { include: { author: true }, orderBy: { createdAt: "asc" } },
     },
   });
   if (!task) return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
