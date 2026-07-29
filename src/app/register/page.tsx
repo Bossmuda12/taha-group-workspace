@@ -26,6 +26,16 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Tahap verifikasi kode email (muncul setelah form pendaftaran berhasil dikirim)
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [emailWarning, setEmailWarning] = useState("");
+  const [code, setCode] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
+
   useEffect(() => {
     fetch("/api/divisions")
       .then((r) => r.json())
@@ -52,8 +62,49 @@ export default function RegisterPage() {
       setError(data.error || "Gagal mendaftar");
       return;
     }
+    setPendingUserId(data.userId);
+    setPendingEmail(data.email || form.email);
+    setEmailWarning(data.emailWarning || "");
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pendingUserId) return;
+    setVerifyError("");
+    setVerifyLoading(true);
+    const res = await fetch("/api/auth/register/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: pendingUserId, code }),
+    });
+    const data = await res.json();
+    setVerifyLoading(false);
+    if (!res.ok) {
+      setVerifyError(data.error || "Kode verifikasi salah");
+      return;
+    }
     setSuccess(true);
     setTimeout(() => router.push("/login"), 2500);
+  }
+
+  async function handleResend() {
+    if (!pendingUserId) return;
+    setResendMsg("");
+    setVerifyError("");
+    setResendLoading(true);
+    const res = await fetch("/api/auth/register/resend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: pendingUserId }),
+    });
+    const data = await res.json();
+    setResendLoading(false);
+    if (!res.ok) {
+      setVerifyError(data.error || "Gagal mengirim ulang kode");
+      return;
+    }
+    setResendMsg("Kode baru sudah dikirim ke email Anda.");
+    if (data.emailWarning) setEmailWarning(data.emailWarning);
   }
 
   if (success) {
@@ -67,6 +118,65 @@ export default function RegisterPage() {
           <p className="mt-2 text-sm text-white/60">
             Akun Anda menunggu aktivasi dari Admin Utama. Anda akan dialihkan ke halaman masuk...
           </p>
+        </GlassCard>
+      </main>
+    );
+  }
+
+  if (pendingUserId) {
+    return (
+      <main className="flex min-h-screen items-center justify-center p-4">
+        <GlassCard strong className="w-full max-w-md animate-scale-in rounded-5xl p-8 sm:p-10">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-3xl glass-strong shadow-glow">
+              <UserPlus className="h-6 w-6 text-accent" />
+            </div>
+            <h1 className="text-xl font-semibold text-white">Verifikasi Email</h1>
+            <p className="mt-2 text-sm text-white/60">
+              Kami telah mengirim kode 6 digit ke <span className="text-white">{pendingEmail}</span>. Masukkan kodenya untuk
+              melanjutkan pendaftaran.
+            </p>
+            {emailWarning && (
+              <p className="mt-2 text-xs text-accent-orange/80">
+                Catatan: email mungkin belum terkirim ({emailWarning}). Hubungi Admin jika kode tidak muncul.
+              </p>
+            )}
+          </div>
+
+          <form onSubmit={handleVerify} className="space-y-4">
+            <div>
+              <GlassLabel>Kode Verifikasi</GlassLabel>
+              <GlassInput
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="123456"
+                className="text-center text-2xl tracking-[0.5em]"
+                required
+              />
+            </div>
+
+            {verifyError && (
+              <div className="rounded-2xl bg-accent-pink/15 px-4 py-2.5 text-sm text-accent-pink">{verifyError}</div>
+            )}
+            {resendMsg && (
+              <div className="rounded-2xl bg-accent-green/15 px-4 py-2.5 text-sm text-accent-green">{resendMsg}</div>
+            )}
+
+            <GlassButton type="submit" loading={verifyLoading} className="w-full py-3" disabled={code.length !== 6}>
+              Verifikasi
+            </GlassButton>
+
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendLoading}
+              className="w-full text-center text-sm text-white/50 hover:text-white disabled:opacity-50"
+            >
+              {resendLoading ? "Mengirim..." : "Kirim ulang kode"}
+            </button>
+          </form>
         </GlassCard>
       </main>
     );
