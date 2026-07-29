@@ -23,7 +23,13 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await createAndSendVerificationCode(user.id, user.email, user.fullName);
-    return NextResponse.json({ ok: true, emailWarning: result.ok ? undefined : result.reason });
+    return NextResponse.json({
+      ok: true,
+      emailWarning: result.ok
+        ? undefined
+        : "Email verifikasi otomatis gagal terkirim. Gunakan kode yang ditampilkan di bawah ini.",
+      verificationCode: result.ok ? undefined : result.code,
+    });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Gagal mengirim ulang kode, coba lagi." }, { status: 500 });
