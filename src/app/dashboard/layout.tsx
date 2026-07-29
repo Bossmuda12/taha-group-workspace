@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Topbar } from "@/components/dashboard/Topbar";
 import { WelcomeScreen } from "@/components/dashboard/WelcomeScreen";
+import { ChatWidget } from "@/components/dashboard/ChatWidget";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ConfirmProvider } from "@/components/ui/Confirm";
 
@@ -33,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           />
           {children}
         </div>
+        <ChatWidget />
       </ConfirmProvider>
     </ToastProvider>
   );
