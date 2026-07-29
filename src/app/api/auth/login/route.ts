@@ -29,6 +29,12 @@ export async function POST(req: NextRequest) {
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) return NextResponse.json({ error: "Kata sandi salah" }, { status: 401 });
 
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        { error: "Email Anda belum diverifikasi. Selesaikan verifikasi di halaman pendaftaran.", needsVerification: true, userId: user.id },
+        { status: 403 }
+      );
+    }
     if (user.status === "PENDING") {
       return NextResponse.json({ error: "Akun Anda masih menunggu aktivasi dari Admin" }, { status: 403 });
     }
