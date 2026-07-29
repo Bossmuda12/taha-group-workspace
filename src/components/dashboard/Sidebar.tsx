@@ -14,6 +14,7 @@ import {
   LogOut,
   UserCircle2,
   ClipboardList,
+  Handshake,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ const items: NavItem[] = [
   { href: "/dashboard/customer-service", label: "Customer Service", icon: Headphones },
   { href: "/dashboard/cs-performance", label: "Rekap Performa CS", icon: ClipboardList },
   { href: "/dashboard/products", label: "Produk", icon: Package },
+  { href: "/dashboard/coordination", label: "Koordinasi Divisi", icon: Handshake },
 ];
 
 export function Sidebar({
