@@ -25,7 +25,7 @@ export function Avatar({
       <img
         src={avatarUrl}
         alt={fullName}
-        className={`${className} rounded-full object-cover`}
+        className={`${className} aspect-square shrink-0 rounded-full object-cover`}
         onError={() => setBroken(true)}
       />
     );
@@ -33,7 +33,7 @@ export function Avatar({
 
   return (
     <div
-      className={`flex ${className} items-center justify-center rounded-full font-bold text-white ${textClassName}`}
+      className={`flex ${className} aspect-square shrink-0 items-center justify-center rounded-full font-bold text-white ${textClassName}`}
       style={{ background: avatarColor }}
     >
       {initials(fullName)}
