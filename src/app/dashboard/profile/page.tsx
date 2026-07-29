@@ -4,7 +4,7 @@ import { Camera, KeyRound, Save, User2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput, GlassLabel } from "@/components/ui/GlassInput";
-import { initials } from "@/lib/utils";
+import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 
 type Me = {
@@ -104,20 +104,7 @@ export default function ProfilePage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <GlassCard className="flex flex-col items-center p-6 text-center">
           <div className="relative mb-4">
-            {me.avatarUrl ? (
-              <img
-                src={me.avatarUrl}
-                alt={me.fullName}
-                className="h-24 w-24 rounded-full object-cover"
-              />
-            ) : (
-              <div
-                className="flex h-24 w-24 items-center justify-center rounded-full text-2xl font-bold text-white"
-                style={{ background: me.avatarColor }}
-              >
-                {initials(me.fullName)}
-              </div>
-            )}
+            <Avatar avatarUrl={me.avatarUrl} fullName={me.fullName} avatarColor={me.avatarColor} className="h-24 w-24" textClassName="text-2xl" />
             <label className="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full glass-strong text-white/80 hover:text-white">
               <Camera className="h-4 w-4" />
               <input type="file" accept="image/*" className="hidden" onChange={handleAvatar} disabled={uploadingAvatar} />
