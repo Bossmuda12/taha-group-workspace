@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, sessionDivisionIds } from "@/lib/auth";
 import { toCsv } from "@/lib/csv";
 import { formatDate } from "@/lib/utils";
 
@@ -9,7 +9,10 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const where: any = {};
-  if (session.role !== "SUPERADMIN") where.user = { divisionId: session.divisionId };
+  if (session.role !== "SUPERADMIN") {
+    const divisionIds = sessionDivisionIds(session);
+    where.user = { OR: [{ divisionId: { in: divisionIds } }, { secondDivisionId: { in: divisionIds } }] };
+  }
 
   const records = await prisma.advertisingRecord.findMany({ where, include: { user: true, product: true }, orderBy: { date: "desc" } });
   const rows = records.map((r: (typeof records)[number]) => ({
