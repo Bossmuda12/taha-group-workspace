@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, ArrowLeft, Send, Plus, Users, CornerUpLeft, Search, Paperclip, Mic, Smile, Square, Loader2 } from "lucide-react";
+import { MessageCircle, X, ArrowLeft, Send, Plus, Users, CornerUpLeft, Search, Paperclip, Mic, Smile, Square, Loader2, Trash2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
+import { useConfirm } from "@/components/ui/Confirm";
 import { cn, initials, formatTime, formatDate } from "@/lib/utils";
 
 const STICKERS = ["😀", "😂", "😍", "🥳", "👍", "🙏", "🔥", "🎉", "😢", "😡", "❤️", "💯"];
@@ -21,6 +22,7 @@ type ChatMsg = {
   id: string;
   body: string;
   createdAt: string;
+  deletedAt?: string | null;
   sender: { id: string; fullName: string };
   replyTo: { id: string; body: string; sender: { fullName: string } } | null;
 } & Attachment;
@@ -56,6 +58,7 @@ function Avatar({ user }: { user: Member }) {
 }
 
 export function ChatWidget() {
+  const confirmDialog = useConfirm();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"list" | "thread" | "new">("list");
   const [conversations, setConversations] = useState<ConvSummary[]>([]);
@@ -208,6 +211,23 @@ export function ChatWidget() {
       if (res.ok) await sendAttachment("IMAGE", data.url, data.name);
     } finally {
       setUploadingAttachment(false);
+    }
+  }
+
+  async function deleteMessage(m: ChatMsg) {
+    if (!activeId) return;
+    const ok = await confirmDialog({
+      title: "Hapus Pesan",
+      message: "Pesan ini akan dihapus untuk semua orang di percakapan. Lanjutkan?",
+      confirmLabel: "Hapus",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/chat/conversations/${activeId}/messages/${m.id}`, { method: "DELETE" });
+      if (res.ok) loadThread(activeId);
+    } catch {
+      // diamkan; pengguna bisa coba lagi
     }
   }
 
@@ -420,7 +440,7 @@ export function ChatWidget() {
                           <span className="mb-0.5 px-1 text-[10px] text-white/40">{m.sender.fullName}</span>
                         )}
                         <div className="flex items-center gap-1">
-                          {mine && (
+                          {mine && !m.deletedAt && (
                             <button
                               onClick={() => setReplyTo(m)}
                               className="opacity-0 transition group-hover:opacity-100 text-white/30 hover:text-white"
@@ -428,7 +448,20 @@ export function ChatWidget() {
                               <CornerUpLeft className="h-3 w-3" />
                             </button>
                           )}
-                          {m.attachmentType === "STICKER" ? (
+                          {mine && !m.deletedAt && (
+                            <button
+                              onClick={() => deleteMessage(m)}
+                              className="opacity-0 transition group-hover:opacity-100 text-white/30 hover:text-accent-pink"
+                              title="Hapus pesan"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                          {m.deletedAt ? (
+                            <div className="rounded-2xl px-3 py-2 text-xs italic glass-pill text-white/40">
+                              Pesan telah dihapus
+                            </div>
+                          ) : m.attachmentType === "STICKER" ? (
                             <div className="text-4xl leading-none">{m.body}</div>
                           ) : (
                             <div
@@ -453,7 +486,7 @@ export function ChatWidget() {
                               {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
                             </div>
                           )}
-                          {!mine && (
+                          {!mine && !m.deletedAt && (
                             <button
                               onClick={() => setReplyTo(m)}
                               className="opacity-0 transition group-hover:opacity-100 text-white/30 hover:text-white"

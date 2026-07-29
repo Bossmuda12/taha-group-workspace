@@ -27,7 +27,7 @@ export function MemberModal({
   onUpdated: () => void;
 }) {
   const toast = useToast();
-  const [form, setForm] = useState({ fullName: "", whatsapp: "", address: "", position: "", divisionId: "", secondDivisionId: "" });
+  const [form, setForm] = useState({ username: "", fullName: "", whatsapp: "", address: "", position: "", divisionId: "", secondDivisionId: "" });
   const [saving, setSaving] = useState(false);
   const [pw, setPw] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
@@ -35,6 +35,7 @@ export function MemberModal({
   useEffect(() => {
     if (member) {
       setForm({
+        username: member.username,
         fullName: member.fullName,
         whatsapp: member.whatsapp,
         address: member.address,
@@ -61,11 +62,12 @@ export function MemberModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, divisionId: form.divisionId || null, secondDivisionId: form.secondDivisionId || null }),
     });
+    const data = await res.json().catch(() => null);
     setSaving(false);
     if (res.ok) {
       toast("Data karyawan berhasil diperbarui");
       onUpdated();
-    } else toast("Gagal memperbarui data", "error");
+    } else toast(data?.error || "Gagal memperbarui data", "error");
   }
 
   async function resetPassword(e: React.FormEvent) {
@@ -110,19 +112,27 @@ export function MemberModal({
             <GlassInput value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} required />
           </div>
           <div>
-            <GlassLabel>Jabatan</GlassLabel>
-            <GlassInput value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} required />
+            <GlassLabel>Username</GlassLabel>
+            <GlassInput
+              value={form.username}
+              onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.trim().toLowerCase() }))}
+              required
+            />
           </div>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
+            <GlassLabel>Jabatan</GlassLabel>
+            <GlassInput value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} required />
+          </div>
+          <div>
             <GlassLabel>Nomor WhatsApp</GlassLabel>
             <GlassInput value={form.whatsapp} onChange={(e) => setForm((f) => ({ ...f, whatsapp: e.target.value }))} required />
           </div>
-          <div>
-            <GlassLabel>Alamat</GlassLabel>
-            <GlassInput value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
-          </div>
+        </div>
+        <div>
+          <GlassLabel>Alamat</GlassLabel>
+          <GlassInput value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
