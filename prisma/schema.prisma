@@ -341,6 +341,9 @@ model ChatMessage {
   replyToId      String?
   replyTo        ChatMessage?  @relation("ChatReply", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replies        ChatMessage[] @relation("ChatReply")
+  // Soft-delete: pesan yang dihapus tetap ada di DB (supaya reply-chain & FK aman),
+  // tapi ditampilkan sebagai "Pesan telah dihapus" di UI. Hanya pengirim yang boleh menghapus.
+  deletedAt      DateTime?
   createdAt      DateTime      @default(now())
 }
 
