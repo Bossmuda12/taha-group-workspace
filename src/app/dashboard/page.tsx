@@ -67,13 +67,13 @@ export default async function DashboardHome() {
       </GlassCard>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Total Tugas" value={totalTasks} icon={ListChecks} color="#0A84FF" />
-        <StatCard label="Selesai" value={doneTasks} icon={Clock3} color="#30D158" />
-        <StatCard label="Terlambat" value={overdueTasks} icon={AlertTriangle} color="#FF375F" />
+        <StatCard label="Total Tugas" value={totalTasks} icon={ListChecks} color="#0A84FF" href="/dashboard/tasks" />
+        <StatCard label="Selesai" value={doneTasks} icon={Clock3} color="#30D158" href="/dashboard/tasks" />
+        <StatCard label="Terlambat" value={overdueTasks} icon={AlertTriangle} color="#FF375F" href="/dashboard/tasks" />
         {isAdmin ? (
-          <StatCard label="Karyawan Aktif" value={totalEmployees} icon={Users2} color="#BF5AF2" />
+          <StatCard label="Karyawan Aktif" value={totalEmployees} icon={Users2} color="#BF5AF2" href="/dashboard/team" />
         ) : (
-          <StatCard label="Divisi" value={[user.division?.name, user.secondDivision?.name].filter(Boolean).join(" & ") || "-"} icon={Building2} color="#BF5AF2" />
+          <StatCard label="Divisi" value={[user.division?.name, user.secondDivision?.name].filter(Boolean).join(" & ") || "-"} icon={Building2} color="#BF5AF2" href="/dashboard/team" />
         )}
       </div>
 
@@ -83,7 +83,11 @@ export default async function DashboardHome() {
           <div className="space-y-3">
             {upcoming.length === 0 && <p className="text-sm text-white/40">Tidak ada tugas aktif saat ini 🎉</p>}
             {upcoming.map((t: (typeof upcoming)[number]) => (
-              <div key={t.id} className="flex items-center justify-between rounded-2xl glass-pill px-4 py-3">
+              <Link
+                key={t.id}
+                href={`/dashboard/tasks?taskId=${t.id}`}
+                className="flex items-center justify-between rounded-2xl glass-pill px-4 py-3 transition hover:bg-white/10"
+              >
                 <div>
                   <p className="text-sm font-medium text-white">{t.title}</p>
                   <p className="text-xs text-white/40">
@@ -91,7 +95,7 @@ export default async function DashboardHome() {
                   </p>
                 </div>
                 <Badge value={t.status} />
-              </div>
+              </Link>
             ))}
           </div>
         </GlassCard>
