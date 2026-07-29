@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, sessionDivisionIds } from "@/lib/auth";
 
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const task = await prisma.task.findUnique({
+    where: { id: params.id },
+    include: {
+      division: true,
+      assignedTo: true,
+      createdBy: true,
+      attachments: { include: { uploadedBy: true }, orderBy: { createdAt: "desc" } },
+    },
+  });
+  if (!task) return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
+
+  if (session.role !== "SUPERADMIN" && !sessionDivisionIds(session).includes(task.divisionId)) {
+    return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 });
+  }
+
+  return NextResponse.json(task);
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
