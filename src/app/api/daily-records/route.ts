@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   const records = await prisma.dailyRecord.findMany({
     where,
-    include: { user: true },
+    include: { user: true, relatedTasks: { select: { id: true, title: true, status: true } } },
     orderBy: { date: "desc" },
     take: 200,
   });
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { date, summary, hoursWorked, achievements, obstacles } = body;
+  const { date, summary, hoursWorked, achievements, obstacles, taskIds } = body;
   if (!date || !summary) return NextResponse.json({ error: "Tanggal & ringkasan wajib diisi" }, { status: 400 });
 
   const record = await prisma.dailyRecord.create({
@@ -48,7 +48,9 @@ export async function POST(req: NextRequest) {
       hoursWorked: hoursWorked ? Number(hoursWorked) : 0,
       achievements,
       obstacles,
+      relatedTasks: Array.isArray(taskIds) && taskIds.length > 0 ? { connect: taskIds.map((id: string) => ({ id })) } : undefined,
     },
+    include: { relatedTasks: { select: { id: true, title: true, status: true } } },
   });
   return NextResponse.json(record);
 }
