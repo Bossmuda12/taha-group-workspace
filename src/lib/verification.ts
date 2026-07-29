@@ -26,7 +26,11 @@ export async function createAndSendVerificationCode(userId: string, email: strin
       <p style="color:#999;font-size:12px;margin-top:32px">Taha Group Work Space</p>
     </div>`;
 
-  return sendEmail(email, "Kode Verifikasi Pendaftaran - Taha Group", html);
+  const sendResult = await sendEmail(email, "Kode Verifikasi Pendaftaran - Taha Group", html);
+  // Selipkan kode-nya di hasil juga: kalau pengiriman email gagal (mis. domain pengirim
+  // belum diverifikasi di Resend), API pemanggil masih bisa menampilkan kode ini langsung
+  // ke pengguna supaya pendaftaran tidak buntu menunggu email yang tidak akan pernah sampai.
+  return { ...sendResult, code };
 }
 
 // Validasi kode yang dimasukkan user. Mengembalikan { ok, error? }.
