@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, sessionDivisionIds } from "@/lib/auth";
 
-async function isManagementAdminOrFounder(session: { role: string; divisionId: string | null }) {
+async function isManagementAdminOrFounder(session: { role: string; divisionId: string | null; secondDivisionId?: string | null }) {
   if (session.role === "SUPERADMIN") return true;
-  if (!session.divisionId) return false;
-  const division = await prisma.division.findUnique({ where: { id: session.divisionId } });
-  return !!division?.name?.toLowerCase().includes("management admin");
+  const divisionIds = sessionDivisionIds(session);
+  if (divisionIds.length === 0) return false;
+  const divisions = await prisma.division.findMany({ where: { id: { in: divisionIds } } });
+  return divisions.some((d) => d.name?.toLowerCase().includes("management admin"));
 }
 
 export async function GET(req: NextRequest) {
