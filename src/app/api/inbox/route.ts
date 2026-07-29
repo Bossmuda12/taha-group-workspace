@@ -40,3 +40,19 @@ ${body}`,
 
   return NextResponse.json(message);
 }
+
+export async function PATCH(req: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: "id wajib diisi" }, { status: 400 });
+
+  const message = await prisma.message.findUnique({ where: { id } });
+  if (!message || message.recipientId !== session.userId) {
+    return NextResponse.json({ error: "Pesan tidak ditemukan" }, { status: 404 });
+  }
+
+  await prisma.message.update({ where: { id }, data: { read: true } });
+  return NextResponse.json({ ok: true });
+}
