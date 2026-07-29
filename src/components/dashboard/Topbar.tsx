@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MobileNav } from "./MobileNav";
+import { playNotifSound, classifyNotifTitle } from "@/lib/sound";
 
 type SearchResults = {
   tasks: { id: string; title: string; sub: string; href: string }[];
@@ -72,6 +73,45 @@ export function Topbar({
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  // Poll notifikasi baru secara berkala dan mainkan "ringtone" sesuai jenisnya
+  // (tugas / pesan chat / notifikasi umum). Nada pertama saat halaman baru dibuka
+  // sengaja tidak dibunyikan supaya tidak berisik memuat ulang notifikasi lama.
+  useEffect(() => {
+    const LAST_SEEN_KEY = "taha_last_notif_id";
+    let cancelled = false;
+    let firstRun = true;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/notifications");
+        if (!res.ok || cancelled) return;
+        const list: Notif[] = await res.json();
+        setUnread(list.filter((n) => !n.read).length);
+
+        const newest = list[0];
+        if (!newest) return;
+        const lastSeen = window.localStorage.getItem(LAST_SEEN_KEY);
+        if (newest.id !== lastSeen) {
+          if (!firstRun && lastSeen !== null) {
+            playNotifSound(classifyNotifTitle(newest.title));
+          }
+          window.localStorage.setItem(LAST_SEEN_KEY, newest.id);
+        }
+      } catch {
+        // diamkan; poll berikutnya akan coba lagi
+      } finally {
+        firstRun = false;
+      }
+    }
+
+    poll();
+    const interval = setInterval(poll, 20000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   async function openNotifications() {
