@@ -70,33 +70,35 @@ export default function CustomerServicePage() {
         <StatCard label="Rasio Closing" value={`${totals.chats ? ((totals.closing / totals.chats) * 100).toFixed(1) : 0}%`} icon={AlertCircle} color="#FF9F0A" />
       </div>
 
-      <GlassCard className="overflow-x-auto p-5">
-        <table className="w-full min-w-[800px] text-sm">
-          <thead>
-            <tr className="text-left text-xs text-white/40">
-              <th className="pb-3 font-medium">Tanggal</th>
-              <th className="pb-3 font-medium">Karyawan</th>
-              <th className="pb-3 font-medium">Chat Masuk</th>
-              <th className="pb-3 font-medium">Closing</th>
-              <th className="pb-3 font-medium">Leads</th>
-              <th className="pb-3 font-medium">Produk</th>
-              <th className="pb-3 font-medium">Kendala</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id} className="border-t border-white/5 text-white/80">
-                <td className="py-3">{formatDate(r.date)}</td>
-                <td className="py-3">{r.user.fullName}</td>
-                <td className="py-3">{r.incomingChats}</td>
-                <td className="py-3 text-accent-green">{r.closingCount}</td>
-                <td className="py-3">{r.leadsCount}</td>
-                <td className="py-3">{r.product?.name ?? "-"}</td>
-                <td className="py-3 text-white/50">{r.obstacles ?? "-"}</td>
+      <GlassCard className="p-5">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-white/40">
+                <th className="pb-3 font-medium">Tanggal</th>
+                <th className="pb-3 font-medium">Karyawan</th>
+                <th className="pb-3 font-medium">Chat Masuk</th>
+                <th className="pb-3 font-medium">Closing</th>
+                <th className="pb-3 font-medium">Leads</th>
+                <th className="pb-3 font-medium">Produk</th>
+                <th className="pb-3 font-medium">Kendala</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id} className="border-t border-white/5 text-white/80">
+                  <td className="py-3">{formatDate(r.date)}</td>
+                  <td className="py-3">{r.user.fullName}</td>
+                  <td className="py-3">{r.incomingChats}</td>
+                  <td className="py-3 text-accent-green">{r.closingCount}</td>
+                  <td className="py-3">{r.leadsCount}</td>
+                  <td className="py-3">{r.product?.name ?? "-"}</td>
+                  <td className="py-3 text-white/50">{r.obstacles ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {records.length === 0 && <p className="py-6 text-center text-sm text-white/30">Belum ada data.</p>}
       </GlassCard>
 
