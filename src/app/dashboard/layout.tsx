@@ -19,7 +19,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <ToastProvider>
       <ConfirmProvider>
         <WelcomeScreen fullName={user.fullName} />
-        <Sidebar role={user.role} divisionName={user.division?.name ?? null} />
+        <Sidebar role={user.role} divisionName={user.division?.name ?? null} secondDivisionName={user.secondDivision?.name ?? null} />
         <div className="min-h-screen px-4 pb-10 pt-4 lg:pl-[18.5rem] lg:pr-8">
           <Topbar
             fullName={user.fullName}
@@ -28,6 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             avatarUrl={user.avatarUrl}
             role={user.role}
             divisionName={user.division?.name ?? null}
+            secondDivisionName={user.secondDivision?.name ?? null}
             notifCount={notifCount}
           />
           {children}

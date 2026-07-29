@@ -12,7 +12,8 @@ export default async function DashboardHome() {
   if (!user) return null;
 
   const isAdmin = user.role === "SUPERADMIN";
-  const taskWhere = isAdmin ? {} : { OR: [{ assignedToId: user.id }, { divisionId: user.divisionId ?? "" }] };
+  const divisionIds = [user.divisionId, user.secondDivisionId].filter((v): v is string => !!v);
+  const taskWhere = isAdmin ? {} : { OR: [{ assignedToId: user.id }, { divisionId: { in: divisionIds } }] };
 
   const [totalTasks, doneTasks, overdueTasks, totalEmployees, divisions, upcoming, pendingCount] = await Promise.all([
     prisma.task.count({ where: taskWhere }),
@@ -50,7 +51,9 @@ export default async function DashboardHome() {
               Halo, {user.fullName.split(" ")[0]} 👋
             </h1>
             <p className="mt-1 text-sm text-white/50">
-              {isAdmin ? `Anda masuk sebagai ${user.position || "Founder Taha Group"}` : `${user.position} · ${user.division?.name ?? "Belum ada divisi"}`}
+              {isAdmin
+                ? `Anda masuk sebagai ${user.position || "Founder Taha Group"}`
+                : `${user.position} · ${[user.division?.name, user.secondDivision?.name].filter(Boolean).join(" & ") || "Belum ada divisi"}`}
             </p>
           </div>
           {isAdmin && (
@@ -70,7 +73,7 @@ export default async function DashboardHome() {
         {isAdmin ? (
           <StatCard label="Karyawan Aktif" value={totalEmployees} icon={Users2} color="#BF5AF2" />
         ) : (
-          <StatCard label="Divisi" value={user.division?.name ?? "-"} icon={Building2} color="#BF5AF2" />
+          <StatCard label="Divisi" value={[user.division?.name, user.secondDivision?.name].filter(Boolean).join(" & ") || "-"} icon={Building2} color="#BF5AF2" />
         )}
       </div>
 
