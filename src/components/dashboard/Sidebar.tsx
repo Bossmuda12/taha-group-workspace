@@ -13,6 +13,7 @@ import {
   Package,
   LogOut,
   UserCircle2,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ const items: NavItem[] = [
   { href: "/dashboard/advertising", label: "Advertising", icon: Megaphone },
   { href: "/dashboard/accounting", label: "Accounting", icon: Wallet },
   { href: "/dashboard/customer-service", label: "Customer Service", icon: Headphones },
+  { href: "/dashboard/cs-performance", label: "Rekap Performa CS", icon: ClipboardList },
   { href: "/dashboard/products", label: "Produk", icon: Package },
 ];
 
@@ -50,6 +52,14 @@ export function Sidebar({
     }
     if (item.href === "/dashboard/customer-service") {
       return role === "SUPERADMIN" || divisionName?.toLowerCase().includes("costumer") || divisionName?.toLowerCase().includes("customer");
+    }
+    if (item.href === "/dashboard/cs-performance") {
+      return (
+        role === "SUPERADMIN" ||
+        divisionName?.toLowerCase().includes("management admin") ||
+        divisionName?.toLowerCase().includes("costumer") ||
+        divisionName?.toLowerCase().includes("customer")
+      );
     }
     if (item.href === "/dashboard/team" || item.href === "/dashboard/products") {
       return role === "SUPERADMIN" || role === "DIVISION_HEAD";
