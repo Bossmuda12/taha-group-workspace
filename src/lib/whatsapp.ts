@@ -10,6 +10,16 @@ let sock: BaileysSocket | null = null;
 let connecting: Promise<BaileysSocket> | null = null;
 const AUTH_DIR = process.env.WA_SESSION_DIR || path.join(process.cwd(), "wa-session");
 
+// Proteksi supaya kalau koneksi putus berulang kali (mis. auth belum valid,
+// nomor belum di-pairing, atau jaringan bermasalah), kita TIDAK langsung
+// reconnect tanpa jeda. Reconnect beruntun tanpa delay bisa dianggap WhatsApp
+// sebagai aktivitas mencurigakan dan berisiko nomor kena limit/blokir.
+let reconnectAttempts = 0;
+const MAX_RECONNECT_DELAY_MS = 60_000; // maksimal jeda 60 detik
+const MIN_RECONNECT_DELAY_MS = 3_000; // minimal jeda 3 detik
+const MAX_RECONNECT_ATTEMPTS = 8; // setelah ini, berhenti coba otomatis
+let pairingCodeRequested = false; // pastikan kode pairing cuma diminta sekali per proses
+
 async function getSocket(): Promise<BaileysSocket | null> {
     if (process.env.WA_ENABLED !== "true") return null;
     if (sock) return sock;
@@ -29,7 +39,8 @@ async function getSocket(): Promise<BaileysSocket | null> {
           // (8 digit) yang bisa dimasukkan manual di HP: WhatsApp > Perangkat
           // Tertaut > Tautkan dengan nomor telepon.
           const pairingPhone = process.env.WA_PAIRING_PHONE;
-                if (pairingPhone && !socket.authState.creds.registered) {
+                if (pairingPhone && !socket.authState.creds.registered && !pairingCodeRequested) {
+                          pairingCodeRequested = true;
                           setTimeout(async () => {
                                       try {
                                                     const code = await socket.requestPairingCode(pairingPhone.replace(/[^0-9]/g, ""));
@@ -37,6 +48,7 @@ async function getSocket(): Promise<BaileysSocket | null> {
                                                     console.log("Buka WhatsApp di HP Admin > Perangkat Tertaut > Tautkan dengan nomor telepon, lalu masukkan kode di atas.\n");
                                       } catch (err) {
                                                     console.error("[wa:error] gagal minta kode pairing:", err);
+                                                    pairingCodeRequested = false; // boleh coba lagi di percobaan reconnect berikutnya
                                       }
                           }, 3000);
                 }
@@ -51,12 +63,30 @@ async function getSocket(): Promise<BaileysSocket | null> {
                           if (connection === "close") {
                                       const shouldReconnect =
                                                     (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-                                      console.log("[wa] koneksi terputus, reconnect:", shouldReconnect);
                                       sock = null;
                                       connecting = null;
-                                      if (shouldReconnect) getSocket();
+                                      if (!shouldReconnect) {
+                                                    console.log("[wa] logout terdeteksi, tidak reconnect otomatis.");
+                                                    return;
+                                      }
+                                      reconnectAttempts += 1;
+                                      if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+                                                    console.error(
+                                                                  `[wa:error] koneksi gagal ${reconnectAttempts}x berturut-turut, berhenti mencoba otomatis untuk menghindari risiko limit WhatsApp. Restart service untuk mencoba lagi.`
+                                                    );
+                                                    return;
+                                      }
+                                      const delay = Math.min(
+                                                    MIN_RECONNECT_DELAY_MS * 2 ** (reconnectAttempts - 1),
+                                                    MAX_RECONNECT_DELAY_MS
+                                      );
+                                      console.log(`[wa] koneksi terputus, reconnect percobaan ke-${reconnectAttempts} dalam ${delay / 1000}s`);
+                                      setTimeout(() => {
+                                                    getSocket();
+                                      }, delay);
                           } else if (connection === "open") {
                                       console.log("[wa] terhubung ke WhatsApp ✅");
+                                      reconnectAttempts = 0;
                           }
                 });
 
