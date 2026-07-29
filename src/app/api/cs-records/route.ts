@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, sessionDivisionIds } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const where = session.role === "SUPERADMIN" ? {} : { user: { divisionId: session.divisionId } };
+  const divisionIds = sessionDivisionIds(session);
+  const where =
+    session.role === "SUPERADMIN"
+      ? {}
+      : { user: { OR: [{ divisionId: { in: divisionIds } }, { secondDivisionId: { in: divisionIds } }] } };
   const records = await prisma.csRecord.findMany({ where, include: { user: true, product: true }, orderBy: { date: "desc" } });
   return NextResponse.json(records);
 }
