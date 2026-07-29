@@ -65,7 +65,7 @@ model User {
   role          Role     @default(STAFF)
   status        String   @default("ACTIVE") // ACTIVE, PENDING, SUSPENDED
   avatarColor   String   @default("#0A84FF")
-avatarUrl     String?
+  avatarUrl     String?
   divisionId    String?
   division      Division? @relation(fields: [divisionId], references: [id])
   createdAt     DateTime @default(now())
@@ -81,6 +81,8 @@ avatarUrl     String?
   messagesSent    Message[]     @relation("MessageSender")
   messagesReceived Message[]    @relation("MessageRecipient")
   passwordResets  PasswordReset[]
+  csPerformances       CsPerformance[] @relation("CsPerformanceOf")
+  csPerformanceEntries CsPerformance[] @relation("CsPerformanceEntries")
 }
 
 model PasswordReset {
@@ -195,6 +197,22 @@ model Product {
   csRecords   CsRecord[]
 }
 
+model CsPerformance {
+  id            String   @id @default(cuid())
+  csUserId      String
+  csUser        User     @relation("CsPerformanceOf", fields: [csUserId], references: [id])
+  date          DateTime
+  resi          String?
+  closingCount  Int      @default(0)
+  deliveryCount Int      @default(0)
+  returCount    Int      @default(0)
+  successCount  Int      @default(0)
+  notes         String?
+  enteredById   String
+  enteredBy     User     @relation("CsPerformanceEntries", fields: [enteredById], references: [id])
+  createdAt     DateTime @default(now())
+}
+
 model Message {
   id           String   @id @default(cuid())
   senderId     String
@@ -213,9 +231,9 @@ model Notification {
   user      User         @relation(fields: [userId], references: [id])
   channel   NotifChannel
   title     String
-  link      String?
-  read      Boolean @default(false)
   body      String
+  link      String?
+  read      Boolean      @default(false)
   status    NotifStatus  @default(PENDING)
   meta      String?
   createdAt DateTime     @default(now())
