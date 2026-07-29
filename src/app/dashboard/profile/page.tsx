@@ -16,7 +16,7 @@ type Me = {
 export default function ProfilePage() {
   const toast = useToast();
   const [me, setMe] = useState<Me | null>(null);
-  const [form, setForm] = useState({ fullName: "", whatsapp: "", address: "" });
+  const [form, setForm] = useState({ fullName: "", whatsapp: "", address: "", username: "", email: "", position: "" });
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
@@ -26,7 +26,14 @@ export default function ProfilePage() {
   async function load() {
     const data = await fetch("/api/me").then((r) => r.json());
     setMe(data);
-    setForm({ fullName: data.fullName, whatsapp: data.whatsapp, address: data.address });
+    setForm({
+      fullName: data.fullName,
+      whatsapp: data.whatsapp,
+      address: data.address,
+      username: data.username,
+      email: data.email,
+      position: data.position,
+    });
   }
   useEffect(() => {
     load();
@@ -40,11 +47,12 @@ export default function ProfilePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
+    const data = await res.json().catch(() => null);
     setSaving(false);
     if (res.ok) {
       toast("Profil berhasil diperbarui");
       load();
-    } else toast("Gagal memperbarui profil", "error");
+    } else toast(data?.error || "Gagal memperbarui profil", "error");
   }
 
   async function handleAvatar(e: React.ChangeEvent<HTMLInputElement>) {
@@ -132,7 +140,26 @@ export default function ProfilePage() {
               </div>
               <div>
                 <GlassLabel>Email</GlassLabel>
-                <GlassInput value={me.email} disabled className="opacity-50" />
+                <GlassInput
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <GlassLabel>Username</GlassLabel>
+                <GlassInput
+                  value={form.username}
+                  onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.trim().toLowerCase() }))}
+                  required
+                />
+              </div>
+              <div>
+                <GlassLabel>Jabatan</GlassLabel>
+                <GlassInput value={form.position} onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} required />
               </div>
             </div>
             <div>
