@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Clock3, FileText, CalendarRange, Sparkles, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Clock3, FileText, CalendarRange, Sparkles, AlertCircle, ListChecks } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput, GlassLabel, GlassTextarea } from "@/components/ui/GlassInput";
@@ -10,7 +11,11 @@ import { formatDate, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 type Task = { id: string; title: string; deadline: string; status: string; priority: string };
-type Record = { id: string; date: string; summary: string; hoursWorked: number; achievements: string | null; obstacles: string | null; user: { fullName: string } };
+type RelatedTask = { id: string; title: string; status: string };
+type Record = {
+  id: string; date: string; summary: string; hoursWorked: number; achievements: string | null; obstacles: string | null;
+  user: { fullName: string }; relatedTasks: RelatedTask[];
+};
 
 const DAY_LABELS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
@@ -21,6 +26,7 @@ export default function CalendarPage() {
   const [records, setRecords] = useState<Record[]>([]);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [form, setForm] = useState({ summary: "", hoursWorked: "", achievements: "", obstacles: "" });
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [range, setRange] = useState({ from: "", to: "" });
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
 
@@ -78,13 +84,18 @@ export default function CalendarPage() {
     const res = await fetch("/api/daily-records", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: date.toISOString(), ...form }),
+      body: JSON.stringify({ date: date.toISOString(), ...form, taskIds: selectedTaskIds }),
     });
     if (res.ok) {
       toast("Laporan harian tersimpan");
       setForm({ summary: "", hoursWorked: "", achievements: "", obstacles: "" });
+      setSelectedTaskIds([]);
       load();
     } else toast("Gagal menyimpan laporan", "error");
+  }
+
+  function toggleTask(id: string) {
+    setSelectedTaskIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
   }
 
   return (
@@ -173,6 +184,25 @@ export default function CalendarPage() {
               <GlassLabel>Kendala</GlassLabel>
               <GlassTextarea rows={2} value={form.obstacles} onChange={(e) => setForm((f) => ({ ...f, obstacles: e.target.value }))} />
             </div>
+            {tasks.length > 0 && (
+              <div>
+                <GlassLabel>Tugas terkait (opsional)</GlassLabel>
+                <div className="max-h-32 space-y-1 overflow-y-auto glass-scroll rounded-2xl glass-pill p-2">
+                  {tasks.map((t) => (
+                    <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-xs text-white/70 hover:bg-white/5">
+                      <input
+                        type="checkbox"
+                        checked={selectedTaskIds.includes(t.id)}
+                        onChange={() => toggleTask(t.id)}
+                        className="accent-accent"
+                      />
+                      <span className="truncate">{t.title}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-[10px] text-white/30">Tautkan laporan ini ke tugas yang sedang dikerjakan.</p>
+              </div>
+            )}
             <GlassButton type="submit" className="w-full">Simpan Laporan</GlassButton>
           </form>
         </GlassCard>
@@ -259,6 +289,26 @@ export default function CalendarPage() {
                   <AlertCircle className="h-3.5 w-3.5 text-accent-orange" /> Kendala
                 </p>
                 <p className="rounded-2xl glass-pill p-4 text-sm text-white/80">{selectedRecord.obstacles}</p>
+              </div>
+            )}
+            {selectedRecord.relatedTasks && selectedRecord.relatedTasks.length > 0 && (
+              <div>
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/40">
+                  <ListChecks className="h-3.5 w-3.5 text-accent" /> Tugas Terkait
+                </p>
+                <div className="space-y-2">
+                  {selectedRecord.relatedTasks.map((t) => (
+                    <Link
+                      key={t.id}
+                      href={`/dashboard/tasks?taskId=${t.id}`}
+                      className="flex items-center justify-between rounded-2xl glass-pill px-4 py-2.5 text-sm text-white/80 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <span className="truncate">{t.title}</span>
+                      <Badge value={t.status} />
+                    </Link>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[10px] text-white/30">Klik tugas untuk lihat detail, link, dan lampiran.</p>
               </div>
             )}
           </div>
