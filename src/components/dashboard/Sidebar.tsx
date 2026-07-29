@@ -15,6 +15,7 @@ import {
   UserCircle2,
   ClipboardList,
   Handshake,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,12 +42,14 @@ export function Sidebar({
   secondDivisionName,
   mobile,
   onNavigate,
+  onClose,
 }: {
   role: string;
   divisionName: string | null;
   secondDivisionName?: string | null;
   mobile?: boolean;
   onNavigate?: () => void;
+  onClose?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -91,10 +94,18 @@ export function Sidebar({
         <div className="flex h-9 w-9 items-center justify-center rounded-2xl glass-strong">
           <img src="/brand/logo-icon.png" alt="Taha Group" className="h-6 w-6 object-contain" />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-white">Taha Group</p>
           <p className="text-[11px] text-white/40">Work Space</p>
         </div>
+        {mobile && onClose && (
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full glass-pill text-white/60 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto glass-scroll pr-1">

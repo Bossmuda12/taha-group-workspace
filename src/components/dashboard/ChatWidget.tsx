@@ -1,17 +1,20 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, ArrowLeft, Send, Plus, Users, CornerUpLeft, Search } from "lucide-react";
+import { MessageCircle, X, ArrowLeft, Send, Plus, Users, CornerUpLeft, Search, Paperclip, Mic, Smile, Square, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { cn, initials, formatTime, formatDate } from "@/lib/utils";
 
+const STICKERS = ["😀", "😂", "😍", "🥳", "👍", "🙏", "🔥", "🎉", "😢", "😡", "❤️", "💯"];
+
 type Member = { id: string; fullName: string; avatarColor: string; avatarUrl?: string | null };
+type Attachment = { attachmentType: string | null; attachmentUrl: string | null; attachmentName: string | null };
 type ConvSummary = {
   id: string;
   isGroup: boolean;
   name: string | null;
   members: Member[];
-  lastMessage: { body: string; createdAt: string; sender: { fullName: string } } | null;
+  lastMessage: ({ body: string; createdAt: string; sender: { fullName: string } } & Attachment) | null;
   unread: number;
 };
 type ChatMsg = {
@@ -20,8 +23,17 @@ type ChatMsg = {
   createdAt: string;
   sender: { id: string; fullName: string };
   replyTo: { id: string; body: string; sender: { fullName: string } } | null;
-};
+} & Attachment;
 type Thread = { id: string; isGroup: boolean; name: string | null; members: Member[]; messages: ChatMsg[] };
+
+function lastMessagePreview(m: ({ body: string } & Attachment) | null) {
+  if (!m) return "Belum ada pesan";
+  if (m.body) return m.body;
+  if (m.attachmentType === "IMAGE") return "📷 Gambar";
+  if (m.attachmentType === "AUDIO") return "🎤 Voice note";
+  if (m.attachmentType === "STICKER") return "Stiker";
+  return "Lampiran";
+}
 
 function convTitle(c: { isGroup: boolean; name: string | null; members: Member[] }, myId: string) {
   if (c.isGroup) return c.name || "Grup";
@@ -53,6 +65,12 @@ export function ChatWidget() {
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState<ChatMsg | null>(null);
   const [sending, setSending] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [stickerOpen, setStickerOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const [allUsers, setAllUsers] = useState<Member[]>([]);
   const [newIsGroup, setNewIsGroup] = useState(false);
@@ -160,6 +178,81 @@ export function ChatWidget() {
     }
   }
 
+  async function sendAttachment(attachmentType: string, attachmentUrl: string, attachmentName?: string | null, bodyText = "") {
+    if (!activeId) return;
+    try {
+      const res = await fetch(`/api/chat/conversations/${activeId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: bodyText, attachmentType, attachmentUrl, attachmentName, replyToId: replyTo?.id }),
+      });
+      if (res.ok) {
+        setReplyTo(null);
+        loadThread(activeId);
+      }
+    } catch {
+      // diamkan; pengguna bisa coba lagi
+    }
+  }
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !activeId) return;
+    setUploadingAttachment(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok) await sendAttachment("IMAGE", data.url, data.name);
+    } finally {
+      setUploadingAttachment(false);
+    }
+  }
+
+  async function sendSticker(emoji: string) {
+    setStickerOpen(false);
+    if (!activeId) return;
+    await sendAttachment("STICKER", "", null, emoji);
+  }
+
+  async function toggleRecording() {
+    if (recording) {
+      mediaRecorderRef.current?.stop();
+      setRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (blob.size === 0 || !activeId) return;
+        setUploadingAttachment(true);
+        try {
+          const fd = new FormData();
+          fd.append("file", new File([blob], `voice-note-${Date.now()}.webm`, { type: "audio/webm" }));
+          const res = await fetch("/api/upload", { method: "POST", body: fd });
+          const data = await res.json();
+          if (res.ok) await sendAttachment("AUDIO", data.url, data.name);
+        } finally {
+          setUploadingAttachment(false);
+        }
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch {
+      // izin mikrofon ditolak / tidak tersedia; diamkan
+    }
+  }
+
   const unreadTotal = conversations.reduce((a, c) => a + c.unread, 0);
   const filteredUsers = allUsers.filter((u) => u.id !== myId && u.fullName.toLowerCase().includes(userQuery.toLowerCase()));
   const isGroupChat = thread?.isGroup ?? false;
@@ -231,7 +324,7 @@ export function ChatWidget() {
                     </span>
                     <span className="flex items-center justify-between gap-2">
                       <span className="truncate text-[11px] text-white/40">
-                        {c.lastMessage ? c.lastMessage.body : "Belum ada pesan"}
+                        {lastMessagePreview(c.lastMessage)}
                       </span>
                       {c.unread > 0 && (
                         <span className="flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded-full bg-accent-pink px-1 text-[9px] font-bold text-white">
@@ -335,20 +428,31 @@ export function ChatWidget() {
                               <CornerUpLeft className="h-3 w-3" />
                             </button>
                           )}
-                          <div
-                            className={cn(
-                              "rounded-2xl px-3 py-2 text-xs",
-                              mine ? "bg-gradient-to-b from-accent to-[#0066CC] text-white" : "glass-pill text-white/90"
-                            )}
-                          >
-                            {m.replyTo && (
-                              <div className="mb-1 rounded-lg border-l-2 border-white/40 bg-black/10 px-2 py-1 text-[10px] opacity-80">
-                                <span className="block font-medium">{m.replyTo.sender.fullName}</span>
-                                <span className="line-clamp-1">{m.replyTo.body}</span>
-                              </div>
-                            )}
-                            <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                          </div>
+                          {m.attachmentType === "STICKER" ? (
+                            <div className="text-4xl leading-none">{m.body}</div>
+                          ) : (
+                            <div
+                              className={cn(
+                                "rounded-2xl text-xs",
+                                m.attachmentType === "IMAGE" ? "overflow-hidden p-1" : "px-3 py-2",
+                                mine ? "bg-gradient-to-b from-accent to-[#0066CC] text-white" : "glass-pill text-white/90"
+                              )}
+                            >
+                              {m.replyTo && (
+                                <div className="mb-1 rounded-lg border-l-2 border-white/40 bg-black/10 px-2 py-1 text-[10px] opacity-80">
+                                  <span className="block font-medium">{m.replyTo.sender.fullName}</span>
+                                  <span className="line-clamp-1">{m.replyTo.body}</span>
+                                </div>
+                              )}
+                              {m.attachmentType === "IMAGE" && m.attachmentUrl && (
+                                <img src={m.attachmentUrl} alt="Lampiran" className="max-h-56 w-full rounded-xl object-cover" />
+                              )}
+                              {m.attachmentType === "AUDIO" && m.attachmentUrl && (
+                                <audio controls src={m.attachmentUrl} className="h-9 max-w-[220px]" />
+                              )}
+                              {m.body && <p className="whitespace-pre-wrap break-words">{m.body}</p>}
+                            </div>
+                          )}
                           {!mine && (
                             <button
                               onClick={() => setReplyTo(m)}
@@ -365,7 +469,7 @@ export function ChatWidget() {
                 })}
               </div>
 
-              <form onSubmit={sendMessage} className="border-t border-white/10 p-3">
+              <form onSubmit={sendMessage} className="relative border-t border-white/10 p-3">
                 {replyTo && (
                   <div className="mb-2 flex items-center gap-2 rounded-xl glass-pill px-3 py-1.5 text-[11px] text-white/60">
                     <CornerUpLeft className="h-3 w-3 shrink-0" />
@@ -377,21 +481,89 @@ export function ChatWidget() {
                     </button>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <GlassInput
-                    className="py-2.5 text-xs"
-                    placeholder="Tulis pesan..."
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!text.trim() || sending}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-accent to-[#0066CC] text-white shadow-glow disabled:opacity-40"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
-                </div>
+
+                {stickerOpen && (
+                  <div className="absolute bottom-full left-3 mb-2 grid grid-cols-6 gap-1 rounded-2xl glass-strong p-2 shadow-glass ring-1 ring-white/10">
+                    {STICKERS.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => sendSticker(s)}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl text-xl hover:bg-white/10"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+
+                {uploadingAttachment ? (
+                  <div className="flex items-center justify-center gap-2 py-2 text-xs text-white/50">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Mengunggah lampiran...
+                  </div>
+                ) : recording ? (
+                  <div className="flex items-center gap-2">
+                    <span className="flex flex-1 items-center gap-2 rounded-2xl glass-pill px-4 py-2.5 text-xs text-accent-pink">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-accent-pink" /> Merekam voice note...
+                    </span>
+                    <button
+                      type="button"
+                      onClick={toggleRecording}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-pink text-white shadow-glow"
+                    >
+                      <Square className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/50 hover:bg-white/10 hover:text-white"
+                      title="Kirim gambar"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStickerOpen((v) => !v)}
+                      className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-white/10",
+                        stickerOpen ? "text-accent" : "text-white/50 hover:text-white"
+                      )}
+                      title="Kirim stiker"
+                    >
+                      <Smile className="h-4 w-4" />
+                    </button>
+                    <GlassInput
+                      className="py-2.5 text-xs"
+                      placeholder="Tulis pesan..."
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      onFocus={() => setStickerOpen(false)}
+                    />
+                    {text.trim() ? (
+                      <button
+                        type="submit"
+                        disabled={sending}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-accent to-[#0066CC] text-white shadow-glow disabled:opacity-40"
+                      >
+                        <Send className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={toggleRecording}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-accent to-[#0066CC] text-white shadow-glow"
+                        title="Rekam voice note"
+                      >
+                        <Mic className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </form>
             </>
           )}

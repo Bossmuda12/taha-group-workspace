@@ -1,5 +1,4 @@
 "use client";
-import { X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 
 export function MobileNav({
@@ -20,10 +19,14 @@ export function MobileNav({
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="absolute left-0 top-0 bottom-0 w-72 p-3">
-        <button onClick={onClose} className="absolute right-1 top-1 z-10 rounded-full p-2 text-white/60">
-          <X className="h-4 w-4" />
-        </button>
-        <Sidebar role={role} divisionName={divisionName} secondDivisionName={secondDivisionName} mobile onNavigate={onClose} />
+        <Sidebar
+          role={role}
+          divisionName={divisionName}
+          secondDivisionName={secondDivisionName}
+          mobile
+          onNavigate={onClose}
+          onClose={onClose}
+        />
       </div>
     </div>
   );
