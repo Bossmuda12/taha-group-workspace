@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { createSession } from "@/lib/auth";
+import { createSession, getSession } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
+    // Cegah login bersamaan di browser yang sama: tolak login baru selama
+    // masih ada sesi aktif (harus logout dulu). Ini pengaman sisi server,
+    // pelengkap gate di halaman /login.
+    const existing = await getSession();
+    if (existing) {
+      return NextResponse.json(
+        { error: `Sudah ada sesi aktif sebagai ${existing.fullName}. Keluar terlebih dahulu untuk masuk dengan akun lain.` },
+        { status: 409 }
+      );
+    }
+
     const { username, password } = await req.json();
     if (!username || !password) {
       return NextResponse.json({ error: "Username dan kata sandi wajib diisi" }, { status: 400 });
