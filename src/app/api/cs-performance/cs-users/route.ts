@@ -13,13 +13,19 @@ export async function GET() {
   }
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const csUsers = await prisma.user.findMany({
-    where: {
-      division: { name: { contains: "ustomer" } }, // cocok utk "Costumer Service" / "Customer Service"
-      status: "ACTIVE",
-    },
-    select: { id: true, fullName: true, position: true },
-    orderBy: { fullName: "asc" },
-  });
+  const [byCostumer, byCustomer] = await Promise.all([
+    prisma.user.findMany({
+      where: { division: { name: { contains: "ostumer" } }, status: "ACTIVE" }, // cocok "Costumer Service"
+      select: { id: true, fullName: true, position: true },
+    }),
+    prisma.user.findMany({
+      where: { division: { name: { contains: "ustomer" } }, status: "ACTIVE" }, // cocok "Customer Service"
+      select: { id: true, fullName: true, position: true },
+    }),
+  ]);
+  const seen = new Set<string>();
+  const csUsers = [...byCostumer, ...byCustomer]
+    .filter((u) => (seen.has(u.id) ? false : (seen.add(u.id), true)))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
   return NextResponse.json(csUsers);
 }
