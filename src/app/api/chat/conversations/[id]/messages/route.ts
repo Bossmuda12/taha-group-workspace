@@ -55,7 +55,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const body = await req.json();
   const text = (body.body || "").trim();
-  if (!text) return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
+  const attachmentType = body.attachmentType || null; // "IMAGE" | "AUDIO" | "STICKER"
+  const attachmentUrl = body.attachmentUrl || null;
+  const attachmentName = body.attachmentName || null;
+  if (!text && !attachmentType) return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
 
   const conversation = await prisma.conversation.findUnique({
     where: { id: params.id },
@@ -68,6 +71,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       conversationId: params.id,
       senderId: session.userId,
       body: text,
+      attachmentType,
+      attachmentUrl,
+      attachmentName,
       replyToId: body.replyToId || null,
     },
     include: {
@@ -86,12 +92,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     ? `Pesan Baru di ${conversation.name}`
     : `Pesan Baru dari ${sender?.fullName ?? "Rekan Kerja"}`;
 
+  const previewBody = text
+    ? (text.length > 140 ? `${text.slice(0, 140)}...` : text)
+    : attachmentType === "IMAGE"
+    ? "📷 Mengirim gambar"
+    : attachmentType === "AUDIO"
+    ? "🎤 Mengirim voice note"
+    : attachmentType === "STICKER"
+    ? "Mengirim stiker"
+    : "Mengirim lampiran";
+
   for (const m of conversation.members) {
     if (m.userId === session.userId) continue;
     await notifyUser({
       userId: m.userId,
       title: notifTitle,
-      body: text.length > 140 ? `${text.slice(0, 140)}...` : text,
+      body: previewBody,
       channels: ["INBOX"],
       link: "/dashboard",
     });
