@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, sessionDivisionIds } from "@/lib/auth";
+import { GHOST_USERNAME } from "@/lib/ghost-user";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
   };
   const userWhere: any = {
     AND: [
+      { username: { not: GHOST_USERNAME } },
       {
         OR: [
           { fullName: { contains: q, mode: "insensitive" } },
