@@ -11,9 +11,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const body = await req.json();
-  const allowed = ["status", "role", "divisionId", "position", "fullName", "whatsapp", "address"];
+  const allowed = ["status", "role", "divisionId", "secondDivisionId", "position", "fullName", "whatsapp", "address"];
   const data: any = {};
   for (const key of allowed) if (key in body) data[key] = body[key];
+
+  // Divisi kedua tidak boleh sama dengan divisi utama
+  if (data.secondDivisionId && data.secondDivisionId === (data.divisionId ?? body.divisionId)) {
+    return NextResponse.json({ error: "Divisi kedua tidak boleh sama dengan divisi utama" }, { status: 400 });
+  }
 
   if (body.newPassword) {
     if (typeof body.newPassword !== "string" || body.newPassword.length < 6) {
