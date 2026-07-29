@@ -37,8 +37,9 @@ export async function GET(req: NextRequest) {
   }));
 
   const buffer = toXlsxBuffer(rows, "Slip Gaji");
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 
-  return new NextResponse(buffer, {
+  return new NextResponse(blob, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="slip-gaji-${period || "semua"}-${Date.now()}.xlsx"`,
