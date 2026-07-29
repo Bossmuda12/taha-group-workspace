@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Wallet2, ShoppingCart, FileBarChart, Banknote, Download } from "lucide-react";
+import { Plus, Wallet2, ShoppingCart, FileBarChart, Banknote, Download, Pencil, Trash2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -9,10 +9,11 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/Confirm";
 
 type Rec = { id: string; date: string; type: string; category: string; description: string; amount: number; user: { fullName: string } };
 type Payslip = {
-  id: string; period: string; baseSalary: number; bonus: number; deduction: number; total: number; createdAt: string;
+  id: string; userId: string; period: string; baseSalary: number; bonus: number; deduction: number; total: number; createdAt: string;
   user: { fullName: string };
 };
 type Employee = { id: string; fullName: string; position: string; divisionName: string };
@@ -22,6 +23,7 @@ const TYPE_LABEL: Record<string, string> = { OUTFLOW: "Pengeluaran", PURCHASE: "
 
 export default function AccountingPage() {
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const [records, setRecords] = useState<Rec[]>([]);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -32,9 +34,45 @@ export default function AccountingPage() {
 
   const [payslipOpen, setPayslipOpen] = useState(false);
   const [payslipSaving, setPayslipSaving] = useState(false);
+  const [payslipEditId, setPayslipEditId] = useState<string | null>(null);
   const [payslipForm, setPayslipForm] = useState({
     userId: "", period: new Date().toISOString().slice(0, 7), baseSalary: "", bonus: "", deduction: "",
   });
+
+  function openCreatePayslip() {
+    setPayslipEditId(null);
+    setPayslipForm({ userId: "", period: new Date().toISOString().slice(0, 7), baseSalary: "", bonus: "", deduction: "" });
+    setPayslipOpen(true);
+  }
+
+  function openEditPayslip(p: Payslip) {
+    setPayslipEditId(p.id);
+    setPayslipForm({
+      userId: p.userId,
+      period: p.period,
+      baseSalary: String(p.baseSalary),
+      bonus: String(p.bonus),
+      deduction: String(p.deduction),
+    });
+    setPayslipOpen(true);
+  }
+
+  async function deletePayslip(id: string) {
+    const ok = await confirmDialog({
+      title: "Hapus Slip Gaji",
+      message: "Slip gaji ini akan dihapus permanen dan tidak bisa dikembalikan.",
+      confirmLabel: "Hapus",
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/payslips/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast("Slip gaji dihapus");
+      load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast(d.error || "Gagal menghapus slip gaji", "error");
+    }
+  }
 
   async function load() {
     const qs = new URLSearchParams();
@@ -66,20 +104,22 @@ export default function AccountingPage() {
   async function submitPayslip(e: React.FormEvent) {
     e.preventDefault();
     setPayslipSaving(true);
-    const res = await fetch("/api/payslips", {
-      method: "POST",
+    const isEdit = !!payslipEditId;
+    const res = await fetch(isEdit ? `/api/payslips/${payslipEditId}` : "/api/payslips", {
+      method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payslipForm),
     });
     setPayslipSaving(false);
     if (res.ok) {
-      toast("Slip gaji berhasil diterbitkan & notifikasi terkirim");
+      toast(isEdit ? "Slip gaji berhasil diperbarui" : "Slip gaji berhasil diterbitkan & notifikasi terkirim");
       setPayslipOpen(false);
+      setPayslipEditId(null);
       setPayslipForm({ userId: "", period: new Date().toISOString().slice(0, 7), baseSalary: "", bonus: "", deduction: "" });
       load();
     } else {
       const d = await res.json();
-      toast(d.error || "Gagal menerbitkan slip gaji", "error");
+      toast(d.error || "Gagal menyimpan slip gaji", "error");
     }
   }
 
@@ -121,16 +161,16 @@ export default function AccountingPage() {
         <GlassButton onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Catat Transaksi</GlassButton>
       </div>
 
-      <GlassCard className="flex flex-wrap items-end gap-3 p-4">
-        <div>
+      <GlassCard className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div className="min-w-0">
           <GlassLabel>Dari Tanggal</GlassLabel>
           <GlassInput type="date" value={range.start} onChange={(e) => setRange((r) => ({ ...r, start: e.target.value }))} />
         </div>
-        <div>
+        <div className="min-w-0">
           <GlassLabel>Sampai Tanggal</GlassLabel>
           <GlassInput type="date" value={range.end} onChange={(e) => setRange((r) => ({ ...r, end: e.target.value }))} />
         </div>
-        <GlassButton variant="secondary" onClick={() => setRange({ start: "", end: "" })}>Reset</GlassButton>
+        <GlassButton variant="secondary" className="w-full sm:w-auto" onClick={() => setRange({ start: "", end: "" })}>Reset</GlassButton>
       </GlassCard>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -171,36 +211,38 @@ export default function AccountingPage() {
         </GlassCard>
       </div>
 
-      <GlassCard className="overflow-x-auto p-5">
+      <GlassCard className="p-5">
         <p className="mb-4 text-sm font-semibold text-white">Rekapitulasi Transaksi</p>
-        <table className="w-full min-w-[700px] text-sm">
-          <thead>
-            <tr className="text-left text-xs text-white/40">
-              <th className="pb-3 font-medium">Tanggal</th>
-              <th className="pb-3 font-medium">Jenis</th>
-              <th className="pb-3 font-medium">Kategori</th>
-              <th className="pb-3 font-medium">Deskripsi</th>
-              <th className="pb-3 font-medium">Oleh</th>
-              <th className="pb-3 text-right font-medium">Jumlah</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id} className="border-t border-white/5 text-white/80">
-                <td className="py-3">{formatDate(r.date)}</td>
-                <td className="py-3">{TYPE_LABEL[r.type] || r.type}</td>
-                <td className="py-3">{r.category}</td>
-                <td className="py-3">{r.description}</td>
-                <td className="py-3">{r.user.fullName}</td>
-                <td className="py-3 text-right text-accent-pink">{formatCurrency(r.amount)}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-white/40">
+                <th className="pb-3 font-medium">Tanggal</th>
+                <th className="pb-3 font-medium">Jenis</th>
+                <th className="pb-3 font-medium">Kategori</th>
+                <th className="pb-3 font-medium">Deskripsi</th>
+                <th className="pb-3 font-medium">Oleh</th>
+                <th className="pb-3 text-right font-medium">Jumlah</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id} className="border-t border-white/5 text-white/80">
+                  <td className="py-3">{formatDate(r.date)}</td>
+                  <td className="py-3">{TYPE_LABEL[r.type] || r.type}</td>
+                  <td className="py-3">{r.category}</td>
+                  <td className="py-3">{r.description}</td>
+                  <td className="py-3">{r.user.fullName}</td>
+                  <td className="py-3 text-right text-accent-pink">{formatCurrency(r.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {records.length === 0 && <p className="py-6 text-center text-sm text-white/30">Belum ada data.</p>}
       </GlassCard>
 
-      <GlassCard className="overflow-x-auto p-5">
+      <GlassCard className="p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-semibold text-white">Slip Gaji Karyawan</p>
           {canManagePayslip && (
@@ -208,38 +250,53 @@ export default function AccountingPage() {
               <GlassButton variant="secondary" type="button" onClick={() => window.open("/api/export/payslips", "_blank")}>
                 <Download className="h-4 w-4" /> Export Excel
               </GlassButton>
-              <GlassButton onClick={() => setPayslipOpen(true)}>
+              <GlassButton onClick={openCreatePayslip}>
                 <Banknote className="h-4 w-4" /> Buat Slip Gaji
               </GlassButton>
             </div>
           )}
         </div>
-        <table className="w-full min-w-[760px] text-sm">
-          <thead>
-            <tr className="text-left text-xs text-white/40">
-              <th className="pb-3 font-medium">Karyawan</th>
-              <th className="pb-3 font-medium">Periode</th>
-              <th className="pb-3 text-right font-medium">Gaji Pokok</th>
-              <th className="pb-3 text-right font-medium">Bonus</th>
-              <th className="pb-3 text-right font-medium">Potongan</th>
-              <th className="pb-3 text-right font-medium">Total</th>
-              <th className="pb-3 font-medium">Diterbitkan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {payslips.map((p) => (
-              <tr key={p.id} className="border-t border-white/5 text-white/80">
-                <td className="py-3">{p.user.fullName}</td>
-                <td className="py-3">{p.period}</td>
-                <td className="py-3 text-right">{formatCurrency(p.baseSalary)}</td>
-                <td className="py-3 text-right text-accent-green">{formatCurrency(p.bonus)}</td>
-                <td className="py-3 text-right text-accent-pink">{formatCurrency(p.deduction)}</td>
-                <td className="py-3 text-right font-medium text-white">{formatCurrency(p.total)}</td>
-                <td className="py-3 text-white/50">{formatDate(p.createdAt)}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-white/40">
+                <th className="pb-3 font-medium">Karyawan</th>
+                <th className="pb-3 font-medium">Periode</th>
+                <th className="pb-3 text-right font-medium">Gaji Pokok</th>
+                <th className="pb-3 text-right font-medium">Bonus</th>
+                <th className="pb-3 text-right font-medium">Potongan</th>
+                <th className="pb-3 text-right font-medium">Total</th>
+                <th className="pb-3 font-medium">Diterbitkan</th>
+                {canManagePayslip && <th className="pb-3 text-right font-medium">Aksi</th>}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {payslips.map((p) => (
+                <tr key={p.id} className="border-t border-white/5 text-white/80">
+                  <td className="py-3">{p.user.fullName}</td>
+                  <td className="py-3">{p.period}</td>
+                  <td className="py-3 text-right">{formatCurrency(p.baseSalary)}</td>
+                  <td className="py-3 text-right text-accent-green">{formatCurrency(p.bonus)}</td>
+                  <td className="py-3 text-right text-accent-pink">{formatCurrency(p.deduction)}</td>
+                  <td className="py-3 text-right font-medium text-white">{formatCurrency(p.total)}</td>
+                  <td className="py-3 text-white/50">{formatDate(p.createdAt)}</td>
+                  {canManagePayslip && (
+                    <td className="py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => openEditPayslip(p)} className="text-white/40 hover:text-accent" title="Edit">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => deletePayslip(p.id)} className="text-white/40 hover:text-accent-pink" title="Hapus">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {payslips.length === 0 && <p className="py-6 text-center text-sm text-white/30">Belum ada slip gaji.</p>}
       </GlassCard>
 
@@ -263,7 +320,7 @@ export default function AccountingPage() {
         </form>
       </GlassModal>
 
-      <GlassModal open={payslipOpen} onClose={() => setPayslipOpen(false)} title="Terbitkan Slip Gaji">
+      <GlassModal open={payslipOpen} onClose={() => { setPayslipOpen(false); setPayslipEditId(null); }} title={payslipEditId ? "Edit Slip Gaji" : "Terbitkan Slip Gaji"}>
         <form onSubmit={submitPayslip} className="space-y-4">
           <div>
             <GlassLabel>Karyawan</GlassLabel>
@@ -296,7 +353,7 @@ export default function AccountingPage() {
             <span className="text-sm text-white/60">Total Diterima</span>
             <span className="text-sm font-semibold text-accent-green">{formatCurrency(payslipTotal)}</span>
           </div>
-          <GlassButton type="submit" className="w-full" loading={payslipSaving}>Terbitkan Slip Gaji</GlassButton>
+          <GlassButton type="submit" className="w-full" loading={payslipSaving}>{payslipEditId ? "Simpan Perubahan" : "Terbitkan Slip Gaji"}</GlassButton>
         </form>
       </GlassModal>
     </div>
