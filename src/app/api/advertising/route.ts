@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, sessionDivisionIds } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     if (end) where.date.lte = new Date(end);
   }
   if (session.role !== "SUPERADMIN") {
-    where.user = { divisionId: session.divisionId };
+    where.user = { OR: [{ divisionId: { in: sessionDivisionIds(session) } }, { secondDivisionId: { in: sessionDivisionIds(session) } }] };
   }
 
   const records = await prisma.advertisingRecord.findMany({
