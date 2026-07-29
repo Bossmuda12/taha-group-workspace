@@ -83,35 +83,37 @@ export default function AdvertisingPage() {
         <StatCard label="Conversion" value={`${totals.leads ? ((totals.closing / totals.leads) * 100).toFixed(1) : 0}%`} icon={TrendingUp} color="#BF5AF2" />
       </div>
 
-      <GlassCard className="overflow-x-auto p-5">
-        <table className="w-full min-w-[800px] text-sm">
-          <thead>
-            <tr className="text-left text-xs text-white/40">
-              <th className="pb-3 font-medium">Tanggal</th>
-              <th className="pb-3 font-medium">Tim</th>
-              <th className="pb-3 font-medium">Closing</th>
-              <th className="pb-3 font-medium">Leads</th>
-              <th className="pb-3 font-medium">Akun Iklan</th>
-              <th className="pb-3 font-medium">Nama FB</th>
-              <th className="pb-3 font-medium">Spend</th>
-              <th className="pb-3 font-medium">Produk</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id} className="border-t border-white/5 text-white/80">
-                <td className="py-3">{formatDate(r.date)}</td>
-                <td className="py-3">{r.teamName}</td>
-                <td className="py-3 text-accent-green">{r.closingCount}</td>
-                <td className="py-3">{r.leadsCount}</td>
-                <td className="py-3">{r.adAccount}</td>
-                <td className="py-3">{r.facebookName}</td>
-                <td className="py-3">{formatCurrency(r.spendBudget)}</td>
-                <td className="py-3">{r.product?.name ?? "-"}</td>
+      <GlassCard className="p-5">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-white/40">
+                <th className="pb-3 font-medium">Tanggal</th>
+                <th className="pb-3 font-medium">Tim</th>
+                <th className="pb-3 font-medium">Closing</th>
+                <th className="pb-3 font-medium">Leads</th>
+                <th className="pb-3 font-medium">Akun Iklan</th>
+                <th className="pb-3 font-medium">Nama FB</th>
+                <th className="pb-3 font-medium">Spend</th>
+                <th className="pb-3 font-medium">Produk</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id} className="border-t border-white/5 text-white/80">
+                  <td className="py-3">{formatDate(r.date)}</td>
+                  <td className="py-3">{r.teamName}</td>
+                  <td className="py-3 text-accent-green">{r.closingCount}</td>
+                  <td className="py-3">{r.leadsCount}</td>
+                  <td className="py-3">{r.adAccount}</td>
+                  <td className="py-3">{r.facebookName}</td>
+                  <td className="py-3">{formatCurrency(r.spendBudget)}</td>
+                  <td className="py-3">{r.product?.name ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {records.length === 0 && <p className="py-6 text-center text-sm text-white/30">Belum ada data.</p>}
       </GlassCard>
 
