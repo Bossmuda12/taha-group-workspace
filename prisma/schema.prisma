@@ -333,6 +333,11 @@ model ChatMessage {
   senderId       String
   sender         User          @relation("ChatMessageSender", fields: [senderId], references: [id])
   body           String
+  // Lampiran opsional: IMAGE (foto), AUDIO (voice note), atau STICKER (emoji besar).
+  // attachmentUrl kosong untuk STICKER karena kontennya cukup disimpan di body.
+  attachmentType String?
+  attachmentUrl  String?
+  attachmentName String?
   replyToId      String?
   replyTo        ChatMessage?  @relation("ChatReply", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replies        ChatMessage[] @relation("ChatReply")
