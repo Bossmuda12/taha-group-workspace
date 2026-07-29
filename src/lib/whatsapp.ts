@@ -8,7 +8,7 @@ type BaileysSocket = any;
 
 let sock: BaileysSocket | null = null;
 let connecting: Promise<BaileysSocket> | null = null;
-const AUTH_DIR = path.join(process.cwd(), "wa-session");
+const AUTH_DIR = process.env.WA_SESSION_DIR || path.join(process.cwd(), "wa-session");
 
 async function getSocket(): Promise<BaileysSocket | null> {
     if (process.env.WA_ENABLED !== "true") return null;
