@@ -18,6 +18,7 @@ type Division = { id: string; name: string; description: string | null; color: s
 type Member = {
   id: string; username: string; fullName: string; address: string; whatsapp: string;
   email: string; position: string; role: string; status: string; avatarColor: string; divisionId: string | null;
+  secondDivisionId?: string | null; secondDivision?: { name: string } | null;
 };
 
 export default function TeamPage() {
@@ -127,7 +128,7 @@ export default function TeamPage() {
 
       <div className="space-y-4">
         {divisions.map((div) => {
-          const divMembers = members.filter((m) => m.divisionId === div.id);
+          const divMembers = members.filter((m) => m.divisionId === div.id || m.secondDivisionId === div.id);
           const open = openDivision === div.id;
           return (
             <GlassCard key={div.id} className="overflow-hidden">
@@ -171,6 +172,11 @@ export default function TeamPage() {
                             <p className="text-sm font-medium text-white">{m.fullName}</p>
                             {m.role === "DIVISION_HEAD" && <Crown className="h-3.5 w-3.5 text-accent-orange" />}
                             <Badge value={m.status} />
+                            {m.secondDivisionId && (
+                              <span className="rounded-full bg-accent-purple/20 px-2 py-0.5 text-[10px] font-medium text-accent-purple">
+                                Rangkap: {m.secondDivisionId === div.id ? divisions.find((d) => d.id === m.divisionId)?.name : m.secondDivision?.name || divisions.find((d) => d.id === m.secondDivisionId)?.name}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-white/40">{m.position} · @{m.username}</p>
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/50">
