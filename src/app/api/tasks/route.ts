@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, sessionDivisionIds } from "@/lib/auth";
 import { notifyUser } from "@/lib/notify";
 import { formatDate } from "@/lib/utils";
 
@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
 
   const where: any = {};
   if (session.role !== "SUPERADMIN") {
-    // Isolasi: tim lain tidak bisa melihat tugas divisi lain
-    where.divisionId = session.divisionId ?? "__none__";
+    // Isolasi: tim lain tidak bisa melihat tugas divisi lain (mendukung rangkap divisi)
+    where.divisionId = { in: sessionDivisionIds(session) };
   } else if (divisionId) {
     where.divisionId = divisionId;
   }
@@ -58,20 +58,20 @@ export async function POST(req: NextRequest) {
   // Notifikasi HANYA ke divisi/karyawan yang dituju (tidak muncul di web tim lain)
   const recipients = task.assignedToId
     ? [task.assignedToId]
-    : (await prisma.user.findMany({ where: { divisionId, status: "ACTIVE" }, select: { id: true } })).map((u: { id: string }) => u.id);
+    : (
+        await prisma.user.findMany({
+          where: { OR: [{ divisionId }, { secondDivisionId: divisionId }], status: "ACTIVE" },
+          select: { id: true },
+        })
+      ).map((u: { id: string }) => u.id);
 
   for (const userId of recipients) {
     await notifyUser({
       userId,
       title: `Tugas Baru: ${title}`,
-      body: `Anda mendapat tugas baru dari Admin Utama.
-
-Deadline: ${formatDate(new Date(deadline))}
-Prioritas: ${priority || "MEDIUM"}
-
-${description}`,
+      body: `Anda mendapat tugas baru dari Admin Utama.\n\nDeadline: ${formatDate(new Date(deadline))}\nPrioritas: ${priority || "MEDIUM"}\n\n${description}`,
       channels: ["WHATSAPP", "EMAIL", "INBOX"],
-            link: "/dashboard/tasks",
+      link: "/dashboard/tasks",
     });
   }
 
