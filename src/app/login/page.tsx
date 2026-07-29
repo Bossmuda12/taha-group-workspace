@@ -1,13 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Lock, User, Eye, EyeOff, ArrowRight, X } from "lucide-react";
+import { Lock, User, Eye, EyeOff, ArrowRight, LogOut, ShieldAlert, Loader2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { GlassClock } from "@/components/ui/GlassClock";
 import { GlassModal } from "@/components/ui/GlassModal";
+
+type ActiveSession = { fullName: string; username: string } | null;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +18,25 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Cek apakah browser ini masih punya sesi aktif (mencegah login bersamaan di tab lain).
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [activeSession, setActiveSession] = useState<ActiveSession>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me) => setActiveSession(me ? { fullName: me.fullName, username: me.username } : null))
+      .finally(() => setCheckingSession(false));
+  }, []);
+
+  async function handleLogoutHere() {
+    setLoggingOut(true);
+    await fetch("/api/auth/logout", { method: "POST" });
+    setActiveSession(null);
+    setLoggingOut(false);
+  }
 
   const [resetOpen, setResetOpen] = useState(false);
   const [resetStep, setResetStep] = useState<"request" | "confirm">("request");
@@ -104,65 +125,97 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-white/50">Work Space Portal Karyawan</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <div className="relative">
-              <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-              <GlassInput
-                className="pl-11"
-                placeholder="Username atau email"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
+        {checkingSession ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-white/50">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <p className="text-sm">Memeriksa sesi...</p>
           </div>
-          <div>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-              <GlassInput
-                className="pl-11 pr-11"
-                placeholder="Kata sandi"
-                type={showPass ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass((s) => !s)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
-              >
-                {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+        ) : activeSession ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 rounded-2xl bg-accent-orange/10 p-4 text-sm text-accent-orange">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                Browser ini masih punya sesi aktif sebagai{" "}
+                <span className="font-semibold">{activeSession.fullName}</span> (@{activeSession.username}).
+                Untuk mencegah login bersamaan, keluar dulu sebelum masuk dengan akun lain.
+              </p>
             </div>
-          </div>
-
-          {error && (
-            <div className="rounded-2xl bg-accent-pink/15 px-4 py-2.5 text-sm text-accent-pink">{error}</div>
-          )}
-
-          <div className="flex items-center justify-end">
-            <button
+            <GlassButton
               type="button"
-              onClick={() => setResetOpen(true)}
-              className="text-xs text-white/50 hover:text-accent"
+              variant="secondary"
+              className="w-full py-3"
+              loading={loggingOut}
+              onClick={handleLogoutHere}
             >
-              Lupa kata sandi?
-            </button>
+              <LogOut className="h-4 w-4" /> Keluar & Masuk Akun Lain
+            </GlassButton>
+            <GlassButton type="button" className="w-full py-3" onClick={() => router.push("/dashboard")}>
+              Lanjut ke Dashboard <ArrowRight className="h-4 w-4" />
+            </GlassButton>
           </div>
+        ) : (
+          <>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <div className="relative">
+                  <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                  <GlassInput
+                    className="pl-11"
+                    placeholder="Username atau email"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                  <GlassInput
+                    className="pl-11 pr-11"
+                    placeholder="Kata sandi"
+                    type={showPass ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass((s) => !s)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
+                  >
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
 
-          <GlassButton type="submit" loading={loading} className="w-full py-3">
-            Masuk <ArrowRight className="h-4 w-4" />
-          </GlassButton>
-        </form>
+              {error && (
+                <div className="rounded-2xl bg-accent-pink/15 px-4 py-2.5 text-sm text-accent-pink">{error}</div>
+              )}
 
-        <div className="mt-6 text-center text-sm text-white/50">
-          Belum punya akun?{" "}
-          <Link href="/register" className="font-medium text-accent hover:underline">
-            Daftar di sini
-          </Link>
-        </div>
+              <div className="flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setResetOpen(true)}
+                  className="text-xs text-white/50 hover:text-accent"
+                >
+                  Lupa kata sandi?
+                </button>
+              </div>
+
+              <GlassButton type="submit" loading={loading} className="w-full py-3">
+                Masuk <ArrowRight className="h-4 w-4" />
+              </GlassButton>
+            </form>
+
+            <div className="mt-6 text-center text-sm text-white/50">
+              Belum punya akun?{" "}
+              <Link href="/register" className="font-medium text-accent hover:underline">
+                Daftar di sini
+              </Link>
+            </div>
+          </>
+        )}
       </GlassCard>
 
       <GlassModal
