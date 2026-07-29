@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Plus, Paperclip, Calendar as CalendarIcon, Upload, Trash2 } from "lucide-react";
+import { Plus, Paperclip, Calendar as CalendarIcon, Upload, Trash2, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput, GlassLabel, GlassSelect, GlassTextarea } from "@/components/ui/GlassInput";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { Badge } from "@/components/ui/Badge";
 import { StatusSelect } from "@/components/ui/StatusSelect";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTime } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/Confirm";
 
@@ -17,6 +17,15 @@ type Task = {
   id: string; title: string; description: string; status: string; priority: string;
   deadline: string; fileUrl: string | null; fileName: string | null;
   division: { name: string; color: string }; assignedTo: { fullName: string } | null;
+  _count?: { attachments: number };
+};
+type TaskAttachment = {
+  id: string; url: string; name: string; createdAt: string;
+  uploadedBy: { id: string; fullName: string };
+};
+type TaskDetail = Task & {
+  createdBy: { fullName: string };
+  attachments: TaskAttachment[];
 };
 
 const STATUSES = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"];
@@ -28,12 +37,18 @@ export default function TasksPage() {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [myId, setMyId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<{ url: string; name: string } | null>(null);
   const [form, setForm] = useState({
     title: "", description: "", divisionId: "", assignedToId: "", deadline: "", priority: "MEDIUM",
   });
+
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<TaskDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [attachUploading, setAttachUploading] = useState(false);
 
   async function load() {
     const [t, d, m, me] = await Promise.all([
@@ -46,6 +61,7 @@ export default function TasksPage() {
     setDivisions(d);
     setMembers(m);
     setIsAdmin(me?.role === "SUPERADMIN");
+    setMyId(me?.id ?? null);
   }
 
   useEffect(() => {
@@ -104,6 +120,90 @@ export default function TasksPage() {
     load();
   }
 
+  async function loadDetail(id: string) {
+    setDetailLoading(true);
+    const res = await fetch(`/api/tasks/${id}`);
+    setDetailLoading(false);
+    if (res.ok) setDetail(await res.json());
+    else {
+      toast("Gagal memuat detail tugas", "error");
+      setDetailId(null);
+    }
+  }
+
+  function openDetail(id: string) {
+    setDetailId(id);
+    setDetail(null);
+    loadDetail(id);
+  }
+
+  async function updateDetailStatus(status: string) {
+    if (!detailId) return;
+    const res = await fetch(`/api/tasks/${detailId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) {
+      loadDetail(detailId);
+      load();
+    }
+  }
+
+  async function uploadAttachment(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f || !detailId) return;
+    setAttachUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const upRes = await fetch("/api/upload", { method: "POST", body: fd });
+      const upData = await upRes.json();
+      if (!upRes.ok) throw new Error(upData.error || "Gagal mengunggah file");
+
+      const res = await fetch(`/api/tasks/${detailId}/attachments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: upData.url, name: upData.name }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "Gagal menambah lampiran");
+      }
+      toast("Lampiran ditambahkan");
+      loadDetail(detailId);
+      load();
+    } catch (err: any) {
+      toast(err.message || "Gagal menambah lampiran", "error");
+    } finally {
+      setAttachUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function deleteAttachment(attachmentId: string) {
+    if (!detailId) return;
+    const ok = await confirmDialog({
+      title: "Hapus Lampiran",
+      message: "Lampiran ini akan dihapus permanen.",
+      confirmLabel: "Hapus",
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/tasks/${detailId}/attachments`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attachmentId }),
+    });
+    if (res.ok) {
+      toast("Lampiran dihapus");
+      loadDetail(detailId);
+      load();
+    } else {
+      const d = await res.json();
+      toast(d.error || "Gagal menghapus lampiran", "error");
+    }
+  }
+
   const filteredMembers = members.filter((m) => m.divisionId === form.divisionId || m.secondDivisionId === form.divisionId);
 
   return (
@@ -132,12 +232,23 @@ export default function TasksPage() {
                 .filter((t) => t.status === status)
                 .map((t) => {
                   const overdue = new Date(t.deadline) < new Date() && t.status !== "DONE";
+                  const attachCount = (t._count?.attachments || 0) + (t.fileUrl ? 1 : 0);
                   return (
-                    <GlassCard key={t.id} className="animate-fade-up p-4">
+                    <GlassCard
+                      key={t.id}
+                      className="animate-fade-up cursor-pointer p-4 transition hover:ring-1 hover:ring-white/15"
+                      onClick={() => openDetail(t.id)}
+                    >
                       <div className="mb-2 flex items-start justify-between gap-2">
                         <p className="text-sm font-medium text-white">{t.title}</p>
                         {isAdmin && (
-                          <button onClick={() => removeTask(t.id)} className="text-white/30 hover:text-accent-pink">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeTask(t.id);
+                            }}
+                            className="text-white/30 hover:text-accent-pink"
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -148,17 +259,19 @@ export default function TasksPage() {
                           {t.division.name}
                         </span>
                         <Badge value={t.priority} />
+                        {attachCount > 0 && (
+                          <span className="flex items-center gap-1 rounded-full glass-pill px-2 py-0.5">
+                            <Paperclip className="h-3 w-3" /> {attachCount}
+                          </span>
+                        )}
                       </div>
                       {t.assignedTo && <p className="mb-2 text-xs text-white/40">👤 {t.assignedTo.fullName}</p>}
                       <div className={`mb-3 flex items-center gap-1.5 text-xs ${overdue ? "text-accent-pink" : "text-white/40"}`}>
                         <CalendarIcon className="h-3 w-3" /> {formatDate(t.deadline)}
                       </div>
-                      {t.fileUrl && (
-                        <a href={t.fileUrl} target="_blank" className="mb-3 flex items-center gap-1.5 text-xs text-accent hover:underline">
-                          <Paperclip className="h-3 w-3" /> {t.fileName}
-                        </a>
-                      )}
-                      <StatusSelect value={t.status} onChange={(v) => updateStatus(t.id, v)} options={STATUSES} />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <StatusSelect value={t.status} onChange={(v) => updateStatus(t.id, v)} options={STATUSES} />
+                      </div>
                     </GlassCard>
                   );
                 })}
@@ -218,6 +331,90 @@ export default function TasksPage() {
           </div>
           <GlassButton type="submit" className="w-full" loading={uploading}>Kirim Tugas & Notifikasi</GlassButton>
         </form>
+      </GlassModal>
+
+      <GlassModal
+        open={!!detailId}
+        onClose={() => {
+          setDetailId(null);
+          setDetail(null);
+        }}
+        title={detail?.title || "Detail Tugas"}
+        maxWidth="max-w-2xl"
+      >
+        {detailLoading || !detail ? (
+          <p className="py-8 text-center text-sm text-white/40">Memuat detail...</p>
+        ) : (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-white/40">
+              <span className="rounded-full px-2 py-0.5" style={{ background: `${detail.division.color}22`, color: detail.division.color }}>
+                {detail.division.name}
+              </span>
+              <Badge value={detail.priority} />
+              <Badge value={detail.status} />
+            </div>
+
+            <p className="whitespace-pre-wrap text-sm text-white/80">{detail.description}</p>
+
+            <div className="grid grid-cols-1 gap-3 text-xs text-white/50 sm:grid-cols-2">
+              <div className="flex items-center gap-1.5">
+                <CalendarIcon className="h-3.5 w-3.5" /> Deadline: {formatDate(detail.deadline)} {formatTime(detail.deadline)}
+              </div>
+              {detail.assignedTo && <div>👤 Ditugaskan ke: {detail.assignedTo.fullName}</div>}
+              <div>Dibuat oleh: {detail.createdBy.fullName}</div>
+            </div>
+
+            <div>
+              <GlassLabel>Status</GlassLabel>
+              <StatusSelect value={detail.status} onChange={updateDetailStatus} options={STATUSES} />
+            </div>
+
+            <div className="border-t border-white/10 pt-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/40">
+                Lampiran ({(detail.fileUrl ? 1 : 0) + detail.attachments.length})
+              </p>
+
+              <div className="space-y-2">
+                {detail.fileUrl && (
+                  <a
+                    href={detail.fileUrl}
+                    target="_blank"
+                    className="flex items-center gap-2.5 rounded-2xl glass-pill px-3 py-2.5 text-xs text-white/70 hover:text-white"
+                  >
+                    <Paperclip className="h-3.5 w-3.5 shrink-0 text-accent" />
+                    <span className="min-w-0 flex-1 truncate">{detail.fileName}</span>
+                    <span className="shrink-0 text-white/30">dari pemberi tugas</span>
+                  </a>
+                )}
+                {detail.attachments.map((a) => (
+                  <div key={a.id} className="flex items-center gap-2.5 rounded-2xl glass-pill px-3 py-2.5 text-xs text-white/70">
+                    <Paperclip className="h-3.5 w-3.5 shrink-0 text-accent" />
+                    <a href={a.url} target="_blank" className="min-w-0 flex-1 truncate hover:text-white hover:underline">
+                      {a.name}
+                    </a>
+                    <span className="shrink-0 text-white/30">
+                      {a.uploadedBy.fullName} · {formatDate(a.createdAt)}
+                    </span>
+                    {(isAdmin || a.uploadedBy.id === myId) && (
+                      <button onClick={() => deleteAttachment(a.id)} className="shrink-0 text-white/30 hover:text-accent-pink">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {!detail.fileUrl && detail.attachments.length === 0 && (
+                  <p className="text-xs text-white/30">Belum ada lampiran.</p>
+                )}
+              </div>
+
+              <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-2xl glass-pill px-4 py-2.5 text-xs text-white/60 hover:text-white">
+                <Upload className="h-3.5 w-3.5" />
+                {attachUploading ? "Mengunggah..." : "Tambah Lampiran"}
+                <input type="file" className="hidden" onChange={uploadAttachment} disabled={attachUploading} />
+              </label>
+            </div>
+          </div>
+        )}
       </GlassModal>
     </div>
   );
