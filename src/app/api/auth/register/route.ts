@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { notifyUser } from "@/lib/notify";
+import { createAndSendVerificationCode } from "@/lib/verification";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,23 +33,21 @@ export async function POST(req: NextRequest) {
         passwordHash,
         divisionId: divisionId || null,
         status: "PENDING",
+        emailVerified: false,
         avatarColor: colors[Math.floor(Math.random() * colors.length)],
       },
     });
 
-    // Beri tahu admin utama ada pendaftaran baru
-    const admin = await prisma.user.findFirst({ where: { role: "SUPERADMIN" } });
-    if (admin) {
-      await notifyUser({
-        userId: admin.id,
-        title: "Pendaftaran Karyawan Baru",
-        body: `${fullName} (${position}) baru saja mendaftar dengan username "${username}". Silakan aktivasi akun di Team Management.`,
-        channels: ["INBOX", "EMAIL"],
-                link: "/dashboard/team?pending=1",
-      });
-    }
+    // Kirim kode verifikasi ke email pendaftar. Admin baru diberi tahu
+    // setelah email ini berhasil dikonfirmasi (lihat /api/auth/register/verify).
+    const sendResult = await createAndSendVerificationCode(user.id, email, fullName);
 
-    return NextResponse.json({ ok: true, userId: user.id });
+    return NextResponse.json({
+      ok: true,
+      userId: user.id,
+      email: user.email,
+      emailWarning: sendResult.ok ? undefined : sendResult.reason,
+    });
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ error: "Gagal mendaftar, coba lagi." }, { status: 500 });
