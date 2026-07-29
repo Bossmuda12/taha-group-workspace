@@ -40,6 +40,12 @@ enum NotifStatus {
   FAILED
 }
 
+enum CoordinationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Division {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -52,6 +58,8 @@ model Division {
   tasks       Task[]
   products    Product[]
   isCore      Boolean  @default(false)
+  coordinationFrom CoordinationRequest[] @relation("CoordinationFromDivision")
+  coordinationTo   CoordinationRequest[] @relation("CoordinationToDivision")
 }
 
 model User {
@@ -86,6 +94,8 @@ model User {
   passwordResets  PasswordReset[]
   csPerformances       CsPerformance[] @relation("CsPerformanceOf")
   csPerformanceEntries CsPerformance[] @relation("CsPerformanceEntries")
+  coordinationRequestsMade    CoordinationRequest[] @relation("CoordinationFrom")
+  coordinationRequestsDecided CoordinationRequest[] @relation("CoordinationDecidedBy")
 }
 
 model PasswordReset {
@@ -241,4 +251,24 @@ model Notification {
   meta      String?
   createdAt DateTime     @default(now())
   sentAt    DateTime?
+}
+
+// Pengajuan koordinasi antar divisi (mis. minta bantuan tim lain / kerja sama lintas divisi).
+// Wajib disetujui Founder (CEO) sebelum divisi tujuan dianggap resmi terlibat.
+model CoordinationRequest {
+  id             String             @id @default(cuid())
+  title          String
+  description    String
+  fromUserId     String
+  fromUser       User               @relation("CoordinationFrom", fields: [fromUserId], references: [id])
+  fromDivisionId String
+  fromDivision   Division           @relation("CoordinationFromDivision", fields: [fromDivisionId], references: [id])
+  toDivisionId   String
+  toDivision     Division           @relation("CoordinationToDivision", fields: [toDivisionId], references: [id])
+  status         CoordinationStatus @default(PENDING)
+  decidedById    String?
+  decidedBy      User?              @relation("CoordinationDecidedBy", fields: [decidedById], references: [id])
+  decisionNote   String?
+  decidedAt      DateTime?
+  createdAt      DateTime           @default(now())
 }
