@@ -15,6 +15,8 @@ const map: Record<string, string> = {
   SUSPENDED: "bg-accent-pink/20 text-accent-pink",
   SENT: "bg-accent-green/20 text-accent-green",
   FAILED: "bg-accent-pink/20 text-accent-pink",
+  APPROVED: "bg-accent-green/20 text-accent-green",
+  REJECTED: "bg-accent-pink/20 text-accent-pink",
 };
 
 const labels: Record<string, string> = {
@@ -32,6 +34,8 @@ const labels: Record<string, string> = {
   SUSPENDED: "Nonaktif",
   SENT: "Terkirim",
   FAILED: "Gagal",
+  APPROVED: "Disetujui",
+  REJECTED: "Ditolak",
 };
 
 export function Badge({ value, className }: { value: string; className?: string }) {
