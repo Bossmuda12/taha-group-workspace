@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const tasks = await prisma.task.findMany({
     where,
-    include: { division: true, assignedTo: true, createdBy: true },
+    include: { division: true, assignedTo: true, createdBy: true, _count: { select: { attachments: true } } },
     orderBy: { deadline: "asc" },
   });
 
