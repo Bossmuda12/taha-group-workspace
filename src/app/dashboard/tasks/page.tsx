@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Plus, Paperclip, Calendar as CalendarIcon, Upload, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Paperclip, Calendar as CalendarIcon, Upload, Trash2, X, Send, MessageSquare } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput, GlassLabel, GlassSelect, GlassTextarea } from "@/components/ui/GlassInput";
@@ -23,9 +24,14 @@ type TaskAttachment = {
   id: string; url: string; name: string; createdAt: string;
   uploadedBy: { id: string; fullName: string };
 };
+type TaskComment = {
+  id: string; body: string; createdAt: string;
+  author: { id: string; fullName: string };
+};
 type TaskDetail = Task & {
   createdBy: { fullName: string };
   attachments: TaskAttachment[];
+  comments: TaskComment[];
 };
 
 const STATUSES = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"];
@@ -33,6 +39,7 @@ const STATUSES = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"];
 export default function TasksPage() {
   const toast = useToast();
   const confirmDialog = useConfirm();
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -49,6 +56,8 @@ export default function TasksPage() {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [attachUploading, setAttachUploading] = useState(false);
+  const [commentBody, setCommentBody] = useState("");
+  const [commentSending, setCommentSending] = useState(false);
 
   async function load() {
     const [t, d, m, me] = await Promise.all([
@@ -66,6 +75,15 @@ export default function TasksPage() {
 
   useEffect(() => {
     load();
+    // Buka detail otomatis kalau diakses lewat link ?taskId=... (mis. dari Beranda / Kalender & Laporan).
+    // Sengaja baca window.location.search langsung (bukan useSearchParams) supaya tidak
+    // perlu Suspense boundary khusus untuk halaman client-only ini.
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get("taskId");
+    if (taskId) {
+      openDetail(taskId);
+      router.replace("/dashboard/tasks");
+    }
   }, []);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -201,6 +219,25 @@ export default function TasksPage() {
     } else {
       const d = await res.json();
       toast(d.error || "Gagal menghapus lampiran", "error");
+    }
+  }
+
+  async function sendComment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!detailId || !commentBody.trim()) return;
+    setCommentSending(true);
+    const res = await fetch(`/api/tasks/${detailId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: commentBody.trim() }),
+    });
+    setCommentSending(false);
+    if (res.ok) {
+      setCommentBody("");
+      loadDetail(detailId);
+    } else {
+      const d = await res.json();
+      toast(d.error || "Gagal mengirim komentar", "error");
     }
   }
 
@@ -412,6 +449,42 @@ export default function TasksPage() {
                 {attachUploading ? "Mengunggah..." : "Tambah Lampiran"}
                 <input type="file" className="hidden" onChange={uploadAttachment} disabled={attachUploading} />
               </label>
+            </div>
+
+            <div className="border-t border-white/10 pt-4">
+              <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-white/40">
+                <MessageSquare className="h-3.5 w-3.5" /> Komentar & Instruksi ({detail.comments.length})
+              </p>
+
+              <div className="max-h-64 space-y-3 overflow-y-auto glass-scroll pr-1">
+                {detail.comments.map((c) => (
+                  <div key={c.id} className="rounded-2xl glass-pill p-3">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-xs font-medium text-white">{c.author.fullName}</span>
+                      <span className="text-[10px] text-white/30">
+                        {formatDate(c.createdAt)} {formatTime(c.createdAt)}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-xs text-white/70">{c.body}</p>
+                  </div>
+                ))}
+                {detail.comments.length === 0 && (
+                  <p className="text-xs text-white/30">Belum ada komentar. Gunakan ini untuk memberi instruksi ke divisi terkait.</p>
+                )}
+              </div>
+
+              <form onSubmit={sendComment} className="mt-3 flex items-end gap-2">
+                <GlassTextarea
+                  rows={2}
+                  value={commentBody}
+                  onChange={(e) => setCommentBody(e.target.value)}
+                  placeholder="Tulis instruksi atau komentar untuk tugas ini..."
+                  className="flex-1"
+                />
+                <GlassButton type="submit" loading={commentSending} disabled={!commentBody.trim()}>
+                  <Send className="h-3.5 w-3.5" />
+                </GlassButton>
+              </form>
             </div>
           </div>
         )}
