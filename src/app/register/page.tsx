@@ -30,6 +30,7 @@ export default function RegisterPage() {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
   const [emailWarning, setEmailWarning] = useState("");
+  const [fallbackCode, setFallbackCode] = useState("");
   const [code, setCode] = useState("");
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState("");
@@ -65,6 +66,8 @@ export default function RegisterPage() {
     setPendingUserId(data.userId);
     setPendingEmail(data.email || form.email);
     setEmailWarning(data.emailWarning || "");
+    setFallbackCode(data.verificationCode || "");
+    if (data.verificationCode) setCode(data.verificationCode);
   }
 
   async function handleVerify(e: React.FormEvent) {
@@ -103,8 +106,10 @@ export default function RegisterPage() {
       setVerifyError(data.error || "Gagal mengirim ulang kode");
       return;
     }
-    setResendMsg("Kode baru sudah dikirim ke email Anda.");
-    if (data.emailWarning) setEmailWarning(data.emailWarning);
+    setResendMsg(data.verificationCode ? "Kode baru berhasil dibuat." : "Kode baru sudah dikirim ke email Anda.");
+    setEmailWarning(data.emailWarning || "");
+    setFallbackCode(data.verificationCode || "");
+    if (data.verificationCode) setCode(data.verificationCode);
   }
 
   if (success) {
@@ -136,12 +141,15 @@ export default function RegisterPage() {
               Kami telah mengirim kode 6 digit ke <span className="text-white">{pendingEmail}</span>. Masukkan kodenya untuk
               melanjutkan pendaftaran.
             </p>
-            {emailWarning && (
-              <p className="mt-2 text-xs text-accent-orange/80">
-                Catatan: email mungkin belum terkirim ({emailWarning}). Hubungi Admin jika kode tidak muncul.
-              </p>
-            )}
+            {emailWarning && <p className="mt-2 text-xs text-accent-orange/80">{emailWarning}</p>}
           </div>
+
+          {fallbackCode && (
+            <div className="mb-4 rounded-2xl bg-accent/15 px-4 py-3 text-center">
+              <p className="text-xs text-white/60">Kode verifikasi Anda (sudah terisi otomatis di bawah):</p>
+              <p className="mt-1 text-2xl font-bold tracking-[0.3em] text-accent">{fallbackCode}</p>
+            </div>
+          )}
 
           <form onSubmit={handleVerify} className="space-y-4">
             <div>
