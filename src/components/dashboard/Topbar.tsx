@@ -145,6 +145,7 @@ export function Topbar({
   const hasResults = results && (results.tasks.length || results.users.length || results.reports.length);
 
   return (
+    <>
     <header className="glass sticky top-4 z-30 mb-6 flex items-center justify-between gap-3 rounded-4xl px-4 py-3 sm:px-6">
       <button className="lg:hidden text-white/70" onClick={() => setMobileOpen(true)}>
         <Menu className="h-5 w-5" />
@@ -266,8 +267,9 @@ export function Topbar({
           </div>
         </Link>
       </div>
-
-      <MobileNav open={mobileOpen} onClose={() => setMobileOpen(false)} role={role} divisionName={divisionName} secondDivisionName={secondDivisionName} />
     </header>
+
+    <MobileNav open={mobileOpen} onClose={() => setMobileOpen(false)} role={role} divisionName={divisionName} secondDivisionName={secondDivisionName} />
+    </>
   );
 }
