@@ -1,7 +1,7 @@
 "use client";
 import { Bell, Menu, Search, ListChecks, User2, FileText, Loader2 } from "lucide-react";
 import { GlassClock } from "@/components/ui/GlassClock";
-import { initials } from "@/lib/utils";
+import { Avatar } from "@/components/ui/Avatar";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -259,16 +259,7 @@ export function Topbar({
         </div>
 
         <Link href="/dashboard/profile" className="flex items-center gap-2.5 rounded-full glass-pill py-1.5 pl-1.5 pr-3 transition hover:bg-white/10">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={fullName} className="h-8 w-8 rounded-full object-cover" />
-          ) : (
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ background: avatarColor }}
-            >
-              {initials(fullName)}
-            </div>
-          )}
+          <Avatar avatarUrl={avatarUrl} fullName={fullName} avatarColor={avatarColor} className="h-8 w-8" textClassName="text-xs" />
           <div className="hidden text-left sm:block">
             <p className="text-xs font-semibold leading-tight text-white">{fullName}</p>
             <p className="text-[11px] leading-tight text-white/40">{position}</p>

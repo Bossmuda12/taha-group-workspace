@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { LucideIcon } from "lucide-react";
 
@@ -7,15 +8,17 @@ export function StatCard({
   icon: Icon,
   color = "#0A84FF",
   hint,
+  href,
 }: {
   label: string;
   value: string | number;
   icon: LucideIcon;
   color?: string;
   hint?: string;
+  href?: string;
 }) {
-  return (
-    <GlassCard className="animate-fade-up p-5">
+  const content = (
+    <GlassCard className={`animate-fade-up p-5 ${href ? "transition hover:bg-white/5" : ""}`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wide text-white/40">{label}</p>
         <div
@@ -29,4 +32,13 @@ export function StatCard({
       {hint && <p className="mt-1 text-xs text-white/40">{hint}</p>}
     </GlassCard>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {content}
+      </Link>
+    );
+  }
+  return content;
 }

@@ -23,9 +23,7 @@ export function MobileNav({
         <button onClick={onClose} className="absolute right-1 top-1 z-10 rounded-full p-2 text-white/60">
           <X className="h-4 w-4" />
         </button>
-        <div className="relative h-full [&>aside]:relative [&>aside]:inset-0 [&>aside]:flex [&>aside]:h-full">
-          <Sidebar role={role} divisionName={divisionName} secondDivisionName={secondDivisionName} />
-        </div>
+        <Sidebar role={role} divisionName={divisionName} secondDivisionName={secondDivisionName} mobile onNavigate={onClose} />
       </div>
     </div>
   );

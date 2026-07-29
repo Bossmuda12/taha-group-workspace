@@ -39,10 +39,14 @@ export function Sidebar({
   role,
   divisionName,
   secondDivisionName,
+  mobile,
+  onNavigate,
 }: {
   role: string;
   divisionName: string | null;
   secondDivisionName?: string | null;
+  mobile?: boolean;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -77,7 +81,12 @@ export function Sidebar({
   }
 
   return (
-    <aside className="glass-dark fixed left-4 top-4 bottom-4 z-40 hidden w-64 flex-col rounded-4xl p-4 lg:flex">
+    <aside
+      className={cn(
+        "glass-dark flex-col rounded-4xl p-4",
+        mobile ? "flex h-full w-full" : "fixed left-4 top-4 bottom-4 z-40 hidden w-64 lg:flex"
+      )}
+    >
       <div className="mb-6 flex items-center gap-2 px-2 pt-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-2xl glass-strong">
           <img src="/brand/logo-icon.png" alt="Taha Group" className="h-6 w-6 object-contain" />
@@ -96,6 +105,7 @@ export function Sidebar({
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-all",
                 active ? "glass text-white shadow-glass" : "text-white/50 hover:bg-white/5 hover:text-white/80"
