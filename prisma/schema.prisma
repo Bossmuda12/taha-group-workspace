@@ -102,6 +102,7 @@ model User {
   conversationMembers  ConversationMember[]
   chatMessages         ChatMessage[]        @relation("ChatMessageSender")
   emailVerifications   EmailVerification[]
+  taskComments         TaskComment[]
 }
 
 // Kode verifikasi 6-digit yang dikirim ke email saat registrasi,
@@ -144,6 +145,20 @@ model Task {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   attachments  TaskAttachment[]
+  comments     TaskComment[]
+  dailyRecords DailyRecord[] @relation("DailyRecordTasks")
+}
+
+// Komentar/instruksi pada tugas, gaya Trello: dipakai admin untuk
+// memerintahkan/mengklarifikasi tugas ke divisi terkait, atau tim melapor progres.
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
 }
 
 // Lampiran tambahan pada tugas (mis. bukti pengerjaan/hasil kerja), gaya Trello:
@@ -169,6 +184,7 @@ model DailyRecord {
   achievements String?
   obstacles   String?
   createdAt   DateTime @default(now())
+  relatedTasks Task[]  @relation("DailyRecordTasks")
 }
 
 model AdvertisingRecord {
