@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    experimental: { serverActions: { bodySizeLimit: '10mb' } },
+    experimental: { serverActions: { bodySizeLimit: '10mb' }, instrumentationHook: true },
     eslint: { ignoreDuringBuilds: true },
     typescript: { ignoreBuildErrors: false },
 };
