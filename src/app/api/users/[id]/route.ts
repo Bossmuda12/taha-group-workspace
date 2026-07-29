@@ -11,13 +11,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const body = await req.json();
-  const allowed = ["status", "role", "divisionId", "secondDivisionId", "position", "fullName", "whatsapp", "address"];
+  const allowed = ["status", "role", "divisionId", "secondDivisionId", "position", "fullName", "whatsapp", "address", "username", "email"];
   const data: any = {};
-  for (const key of allowed) if (key in body) data[key] = body[key];
+  for (const key of allowed) if (key in body) data[key] = typeof body[key] === "string" ? body[key].trim() : body[key];
 
   // Divisi kedua tidak boleh sama dengan divisi utama
   if (data.secondDivisionId && data.secondDivisionId === (data.divisionId ?? body.divisionId)) {
     return NextResponse.json({ error: "Divisi kedua tidak boleh sama dengan divisi utama" }, { status: 400 });
+  }
+
+  // Username & email wajib unik di seluruh sistem (dipakai untuk login).
+  if (data.username || data.email) {
+    const existing = await prisma.user.findFirst({
+      where: {
+        id: { not: params.id },
+        OR: [
+          ...(data.username ? [{ username: data.username }] : []),
+          ...(data.email ? [{ email: data.email }] : []),
+        ],
+      },
+    });
+    if (existing) {
+      return NextResponse.json({ error: "Username atau email sudah dipakai akun lain" }, { status: 409 });
+    }
   }
 
   if (body.newPassword) {
@@ -27,7 +43,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data.passwordHash = await bcrypt.hash(body.newPassword, 10);
   }
 
-  const user = await prisma.user.update({ where: { id: params.id }, data });
+  let user;
+  try {
+    user = await prisma.user.update({ where: { id: params.id }, data });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      return NextResponse.json({ error: "Username atau email sudah dipakai akun lain" }, { status: 409 });
+    }
+    throw err;
+  }
 
   if (body.status === "ACTIVE") {
     await notifyUser({
