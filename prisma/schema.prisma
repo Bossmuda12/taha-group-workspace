@@ -96,6 +96,7 @@ model User {
   csPerformanceEntries CsPerformance[] @relation("CsPerformanceEntries")
   coordinationRequestsMade    CoordinationRequest[] @relation("CoordinationFrom")
   coordinationRequestsDecided CoordinationRequest[] @relation("CoordinationDecidedBy")
+  taskAttachments TaskAttachment[]
 }
 
 model PasswordReset {
@@ -125,6 +126,20 @@ model Task {
   deadline     DateTime
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  attachments  TaskAttachment[]
+}
+
+// Lampiran tambahan pada tugas (mis. bukti pengerjaan/hasil kerja), gaya Trello:
+// bisa banyak file per tugas, diunggah oleh siapa pun yang berhak melihat tugas tsb.
+model TaskAttachment {
+  id           String   @id @default(cuid())
+  taskId       String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  url          String
+  name         String
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
 }
 
 model DailyRecord {
