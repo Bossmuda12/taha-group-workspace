@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/Confirm";
 
 type Division = { id: string; name: string };
-type Member = { id: string; fullName: string; divisionId: string | null };
+type Member = { id: string; fullName: string; divisionId: string | null; secondDivisionId?: string | null };
 type Task = {
   id: string; title: string; description: string; status: string; priority: string;
   deadline: string; fileUrl: string | null; fileName: string | null;
@@ -104,7 +104,7 @@ export default function TasksPage() {
     load();
   }
 
-  const filteredMembers = members.filter((m) => m.divisionId === form.divisionId);
+  const filteredMembers = members.filter((m) => m.divisionId === form.divisionId || m.secondDivisionId === form.divisionId);
 
   return (
     <div className="space-y-6">
