@@ -38,13 +38,14 @@ export default function CsPerformancePage() {
   const [csUsers, setCsUsers] = useState<CsUser[]>([]);
   const [records, setRecords] = useState<Rec[]>([]);
   const [filterCs, setFilterCs] = useState("");
+  const [range, setRange] = useState({ start: "", end: "" });
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     csUserId: "", date: new Date().toISOString().slice(0, 10), resi: "",
     closingCount: "", deliveryCount: "", returCount: "", successCount: "", notes: "",
   });
 
-  async function load(csUserId?: string) {
+  async function load(csUserId?: string, r?: { start: string; end: string }) {
     const usersRes = await fetch("/api/cs-performance/cs-users");
     if (usersRes.ok) {
       setIsManager(true);
@@ -54,10 +55,18 @@ export default function CsPerformancePage() {
     }
     const params = new URLSearchParams();
     if (csUserId) params.set("csUserId", csUserId);
+    const useRange = r ?? range;
+    if (useRange.start) params.set("from", useRange.start);
+    if (useRange.end) params.set("to", useRange.end);
     const recRes = await fetch(`/api/cs-performance${params.toString() ? `?${params}` : ""}`);
     if (recRes.ok) setRecords(await recRes.json());
   }
   useEffect(() => { load(); }, []);
+
+  function applyRange(next: { start: string; end: string }) {
+    setRange(next);
+    load(filterCs, next);
+  }
 
   const totals = useMemo(
     () =>
@@ -73,20 +82,19 @@ export default function CsPerformancePage() {
     [records]
   );
 
-  const chartData = useMemo(
-    () =>
-      [...records]
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(-14)
-        .map((r) => ({
-          tanggal: formatDate(r.date, { day: "2-digit", month: "2-digit" }),
-          Closing: r.closingCount,
-          Pengiriman: r.deliveryCount,
-          Retur: r.returCount,
-          Sukses: r.successCount,
-        })),
-    [records]
-  );
+  const hasCustomRange = !!(range.start || range.end);
+
+  const chartData = useMemo(() => {
+    const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const visible = hasCustomRange ? sorted : sorted.slice(-14);
+    return visible.map((r) => ({
+      tanggal: formatDate(r.date, { day: "2-digit", month: "2-digit" }),
+      Closing: r.closingCount,
+      Pengiriman: r.deliveryCount,
+      Retur: r.returCount,
+      Sukses: r.successCount,
+    }));
+  }, [records, hasCustomRange]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -108,7 +116,7 @@ export default function CsPerformancePage() {
 
   function applyFilter(id: string) {
     setFilterCs(id);
-    load(id);
+    load(id, range);
   }
 
   if (isManager === null) {
@@ -161,8 +169,22 @@ export default function CsPerformancePage() {
         <StatCard label="Terkirim Sukses" value={totals.success} icon={CheckCircle2} color="#BF5AF2" />
       </div>
 
+      <GlassCard className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div className="min-w-0">
+          <GlassLabel>Dari Tanggal</GlassLabel>
+          <GlassInput type="date" value={range.start} onChange={(e) => applyRange({ ...range, start: e.target.value })} />
+        </div>
+        <div className="min-w-0">
+          <GlassLabel>Sampai Tanggal</GlassLabel>
+          <GlassInput type="date" value={range.end} onChange={(e) => applyRange({ ...range, end: e.target.value })} />
+        </div>
+        <GlassButton variant="secondary" className="w-full sm:w-auto" onClick={() => applyRange({ start: "", end: "" })}>Reset</GlassButton>
+      </GlassCard>
+
       <GlassCard className="p-5">
-        <p className="mb-4 text-sm font-semibold text-white">Grafik Performa (14 entri terakhir)</p>
+        <p className="mb-4 text-sm font-semibold text-white">
+          {hasCustomRange ? "Grafik Performa (rentang dipilih)" : "Grafik Performa (14 entri terakhir)"}
+        </p>
         {chartData.length === 0 ? (
           <p className="py-10 text-center text-sm text-white/30">Belum ada data untuk ditampilkan.</p>
         ) : (
@@ -183,35 +205,37 @@ export default function CsPerformancePage() {
         )}
       </GlassCard>
 
-      <GlassCard className="overflow-x-auto p-5">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead>
-            <tr className="text-left text-xs text-white/40">
-              <th className="pb-3 font-medium">Tanggal</th>
-              {isManager && <th className="pb-3 font-medium">CS</th>}
-              <th className="pb-3 font-medium">No. Resi</th>
-              <th className="pb-3 font-medium">Closing</th>
-              <th className="pb-3 font-medium">Pengiriman</th>
-              <th className="pb-3 font-medium">Retur/RTS</th>
-              <th className="pb-3 font-medium">Sukses</th>
-              <th className="pb-3 font-medium">Diinput oleh</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id} className="border-t border-white/5 text-white/80">
-                <td className="py-3">{formatDate(r.date)}</td>
-                {isManager && <td className="py-3">{r.csUser.fullName}</td>}
-                <td className="py-3 text-white/50">{r.resi || "-"}</td>
-                <td className="py-3 text-accent">{r.closingCount}</td>
-                <td className="py-3 text-accent-green">{r.deliveryCount}</td>
-                <td className="py-3 text-accent-pink">{r.returCount}</td>
-                <td className="py-3 text-accent-purple">{r.successCount}</td>
-                <td className="py-3 text-white/40">{r.enteredBy.fullName}</td>
+      <GlassCard className="p-5">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-white/40">
+                <th className="pb-3 font-medium">Tanggal</th>
+                {isManager && <th className="pb-3 font-medium">CS</th>}
+                <th className="pb-3 font-medium">No. Resi</th>
+                <th className="pb-3 font-medium">Closing</th>
+                <th className="pb-3 font-medium">Pengiriman</th>
+                <th className="pb-3 font-medium">Retur/RTS</th>
+                <th className="pb-3 font-medium">Sukses</th>
+                <th className="pb-3 font-medium">Diinput oleh</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id} className="border-t border-white/5 text-white/80">
+                  <td className="py-3">{formatDate(r.date)}</td>
+                  {isManager && <td className="py-3">{r.csUser.fullName}</td>}
+                  <td className="py-3 text-white/50">{r.resi || "-"}</td>
+                  <td className="py-3 text-accent">{r.closingCount}</td>
+                  <td className="py-3 text-accent-green">{r.deliveryCount}</td>
+                  <td className="py-3 text-accent-pink">{r.returCount}</td>
+                  <td className="py-3 text-accent-purple">{r.successCount}</td>
+                  <td className="py-3 text-white/40">{r.enteredBy.fullName}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {records.length === 0 && <p className="py-6 text-center text-sm text-white/30">Belum ada data rekap.</p>}
       </GlassCard>
 
