@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Wallet2, ShoppingCart, FileBarChart, Banknote } from "lucide-react";
+import { Plus, Wallet2, ShoppingCart, FileBarChart, Banknote, Download } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -11,7 +11,11 @@ import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 type Rec = { id: string; date: string; type: string; category: string; description: string; amount: number; user: { fullName: string } };
-type Payslip = { id: string; period: string; total: number; user: { fullName: string } };
+type Payslip = {
+  id: string; period: string; baseSalary: number; bonus: number; deduction: number; total: number; createdAt: string;
+  user: { fullName: string };
+};
+type Employee = { id: string; fullName: string; position: string; divisionName: string };
 
 const COLORS = ["#0A84FF", "#BF5AF2", "#FF375F", "#63E6E2", "#FF9F0A", "#30D158"];
 const TYPE_LABEL: Record<string, string> = { OUTFLOW: "Pengeluaran", PURCHASE: "Pembelian Barang", RECAP: "Rekapitulasi" };
@@ -20,22 +24,64 @@ export default function AccountingPage() {
   const toast = useToast();
   const [records, setRecords] = useState<Rec[]>([]);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [canManagePayslip, setCanManagePayslip] = useState(false);
   const [range, setRange] = useState({ start: "", end: "" });
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), type: "OUTFLOW", category: "", description: "", amount: "" });
+
+  const [payslipOpen, setPayslipOpen] = useState(false);
+  const [payslipSaving, setPayslipSaving] = useState(false);
+  const [payslipForm, setPayslipForm] = useState({
+    userId: "", period: new Date().toISOString().slice(0, 7), baseSalary: "", bonus: "", deduction: "",
+  });
 
   async function load() {
     const qs = new URLSearchParams();
     if (range.start) qs.set("start", range.start);
     if (range.end) qs.set("end", range.end);
-    const [r, p] = await Promise.all([
+    const [r, p, empRes] = await Promise.all([
       fetch(`/api/accounting?${qs}`).then((res) => res.json()),
       fetch("/api/payslips").then((res) => res.json()),
+      fetch("/api/payslips/employees"),
     ]);
     setRecords(r);
     setPayslips(p);
+    if (empRes.ok) {
+      setCanManagePayslip(true);
+      setEmployees(await empRes.json());
+    } else {
+      setCanManagePayslip(false);
+    }
   }
   useEffect(() => { load(); }, [range.start, range.end]);
+
+  const payslipTotal = useMemo(() => {
+    const base = Number(payslipForm.baseSalary) || 0;
+    const bonus = Number(payslipForm.bonus) || 0;
+    const deduction = Number(payslipForm.deduction) || 0;
+    return base + bonus - deduction;
+  }, [payslipForm.baseSalary, payslipForm.bonus, payslipForm.deduction]);
+
+  async function submitPayslip(e: React.FormEvent) {
+    e.preventDefault();
+    setPayslipSaving(true);
+    const res = await fetch("/api/payslips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payslipForm),
+    });
+    setPayslipSaving(false);
+    if (res.ok) {
+      toast("Slip gaji berhasil diterbitkan & notifikasi terkirim");
+      setPayslipOpen(false);
+      setPayslipForm({ userId: "", period: new Date().toISOString().slice(0, 7), baseSalary: "", bonus: "", deduction: "" });
+      load();
+    } else {
+      const d = await res.json();
+      toast(d.error || "Gagal menerbitkan slip gaji", "error");
+    }
+  }
 
   const totalOut = useMemo(() => records.reduce((a, r) => a + r.amount, 0), [records]);
 
@@ -154,17 +200,47 @@ export default function AccountingPage() {
         {records.length === 0 && <p className="py-6 text-center text-sm text-white/30">Belum ada data.</p>}
       </GlassCard>
 
-      <GlassCard className="p-5">
-        <p className="mb-4 text-sm font-semibold text-white">Slip Gaji Karyawan</p>
-        <div className="space-y-2">
-          {payslips.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-2xl glass-pill p-3">
-              <span className="text-sm text-white/80">{p.user.fullName} · Periode {p.period}</span>
-              <span className="text-sm font-medium text-accent-green">{formatCurrency(p.total)}</span>
+      <GlassCard className="overflow-x-auto p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-white">Slip Gaji Karyawan</p>
+          {canManagePayslip && (
+            <div className="flex items-center gap-2">
+              <GlassButton variant="secondary" type="button" onClick={() => window.open("/api/export/payslips", "_blank")}>
+                <Download className="h-4 w-4" /> Export Excel
+              </GlassButton>
+              <GlassButton onClick={() => setPayslipOpen(true)}>
+                <Banknote className="h-4 w-4" /> Buat Slip Gaji
+              </GlassButton>
             </div>
-          ))}
-          {payslips.length === 0 && <p className="text-sm text-white/30">Belum ada slip gaji.</p>}
+          )}
         </div>
+        <table className="w-full min-w-[760px] text-sm">
+          <thead>
+            <tr className="text-left text-xs text-white/40">
+              <th className="pb-3 font-medium">Karyawan</th>
+              <th className="pb-3 font-medium">Periode</th>
+              <th className="pb-3 text-right font-medium">Gaji Pokok</th>
+              <th className="pb-3 text-right font-medium">Bonus</th>
+              <th className="pb-3 text-right font-medium">Potongan</th>
+              <th className="pb-3 text-right font-medium">Total</th>
+              <th className="pb-3 font-medium">Diterbitkan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {payslips.map((p) => (
+              <tr key={p.id} className="border-t border-white/5 text-white/80">
+                <td className="py-3">{p.user.fullName}</td>
+                <td className="py-3">{p.period}</td>
+                <td className="py-3 text-right">{formatCurrency(p.baseSalary)}</td>
+                <td className="py-3 text-right text-accent-green">{formatCurrency(p.bonus)}</td>
+                <td className="py-3 text-right text-accent-pink">{formatCurrency(p.deduction)}</td>
+                <td className="py-3 text-right font-medium text-white">{formatCurrency(p.total)}</td>
+                <td className="py-3 text-white/50">{formatDate(p.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {payslips.length === 0 && <p className="py-6 text-center text-sm text-white/30">Belum ada slip gaji.</p>}
       </GlassCard>
 
       <GlassModal open={open} onClose={() => setOpen(false)} title="Catat Transaksi Keuangan">
@@ -184,6 +260,43 @@ export default function AccountingPage() {
           <div><GlassLabel>Deskripsi</GlassLabel><GlassTextarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></div>
           <div><GlassLabel>Jumlah (Rp)</GlassLabel><GlassInput type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} required /></div>
           <GlassButton type="submit" className="w-full">Simpan</GlassButton>
+        </form>
+      </GlassModal>
+
+      <GlassModal open={payslipOpen} onClose={() => setPayslipOpen(false)} title="Terbitkan Slip Gaji">
+        <form onSubmit={submitPayslip} className="space-y-4">
+          <div>
+            <GlassLabel>Karyawan</GlassLabel>
+            <GlassSelect value={payslipForm.userId} onChange={(e) => setPayslipForm((f) => ({ ...f, userId: e.target.value }))} required>
+              <option value="" className="bg-ink-800">Pilih karyawan</option>
+              {employees.map((e) => (
+                <option key={e.id} value={e.id} className="bg-ink-800">{e.fullName} · {e.position} ({e.divisionName})</option>
+              ))}
+            </GlassSelect>
+          </div>
+          <div>
+            <GlassLabel>Periode</GlassLabel>
+            <GlassInput type="month" value={payslipForm.period} onChange={(e) => setPayslipForm((f) => ({ ...f, period: e.target.value }))} required />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <GlassLabel>Gaji Pokok (Rp)</GlassLabel>
+              <GlassInput type="number" value={payslipForm.baseSalary} onChange={(e) => setPayslipForm((f) => ({ ...f, baseSalary: e.target.value }))} required />
+            </div>
+            <div>
+              <GlassLabel>Bonus (Rp)</GlassLabel>
+              <GlassInput type="number" value={payslipForm.bonus} onChange={(e) => setPayslipForm((f) => ({ ...f, bonus: e.target.value }))} />
+            </div>
+            <div>
+              <GlassLabel>Potongan (Rp)</GlassLabel>
+              <GlassInput type="number" value={payslipForm.deduction} onChange={(e) => setPayslipForm((f) => ({ ...f, deduction: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between rounded-2xl glass-pill px-4 py-3">
+            <span className="text-sm text-white/60">Total Diterima</span>
+            <span className="text-sm font-semibold text-accent-green">{formatCurrency(payslipTotal)}</span>
+          </div>
+          <GlassButton type="submit" className="w-full" loading={payslipSaving}>Terbitkan Slip Gaji</GlassButton>
         </form>
       </GlassModal>
     </div>
