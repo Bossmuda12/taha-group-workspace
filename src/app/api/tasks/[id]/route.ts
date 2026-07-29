@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, sessionDivisionIds } from "@/lib/auth";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession();
@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const task = await prisma.task.findUnique({ where: { id: params.id } });
   if (!task) return NextResponse.json({ error: "Tugas tidak ditemukan" }, { status: 404 });
 
-  if (session.role !== "SUPERADMIN" && session.divisionId !== task.divisionId) {
+  if (session.role !== "SUPERADMIN" && !sessionDivisionIds(session).includes(task.divisionId)) {
     return NextResponse.json({ error: "Tidak diizinkan" }, { status: 403 });
   }
 
