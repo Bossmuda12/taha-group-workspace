@@ -48,6 +48,7 @@ model Division {
   color       String   @default("#0A84FF")
   createdAt   DateTime @default(now())
   users       User[]
+  secondaryUsers User[] @relation("SecondDivision")
   tasks       Task[]
   products    Product[]
   isCore      Boolean  @default(false)
@@ -68,6 +69,8 @@ model User {
   avatarUrl     String?
   divisionId    String?
   division      Division? @relation(fields: [divisionId], references: [id])
+  secondDivisionId String?
+  secondDivision   Division? @relation("SecondDivision", fields: [secondDivisionId], references: [id])
   createdAt     DateTime @default(now())
 
   tasksAssigned   Task[]        @relation("AssignedTo")
