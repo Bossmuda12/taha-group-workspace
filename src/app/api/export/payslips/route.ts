@@ -37,9 +37,10 @@ export async function GET(req: NextRequest) {
   }));
 
   const buffer = toXlsxBuffer(rows, "Slip Gaji");
-  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 
-  return new NextResponse(blob, {
+  // Cast eksplisit: Uint8Array valid sebagai BodyInit di runtime, tapi tipe generic
+  // ArrayBufferLike/SharedArrayBuffer di lib TS terbaru membuat type-checker terlalu ketat.
+  return new NextResponse(buffer as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="slip-gaji-${period || "semua"}-${Date.now()}.xlsx"`,
