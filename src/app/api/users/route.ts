@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { getSession, sessionDivisionIds } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -11,14 +11,15 @@ export async function GET(req: NextRequest) {
 
   const where: any = {};
   if (session.role !== "SUPERADMIN") {
-    where.divisionId = session.divisionId;
+    const divisionIds = sessionDivisionIds(session);
+    where.OR = [{ divisionId: { in: divisionIds } }, { secondDivisionId: { in: divisionIds } }];
   } else if (divisionId) {
-    where.divisionId = divisionId;
+    where.OR = [{ divisionId }, { secondDivisionId: divisionId }];
   }
 
   const users = await prisma.user.findMany({
     where,
-    include: { division: true },
+    include: { division: true, secondDivision: true },
     orderBy: { createdAt: "desc" },
   });
 
