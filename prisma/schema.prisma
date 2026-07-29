@@ -73,6 +73,7 @@ model User {
   position      String
   role          Role     @default(STAFF)
   status        String   @default("ACTIVE") // ACTIVE, PENDING, SUSPENDED
+  emailVerified Boolean  @default(true) // default true supaya akun lama tidak terkunci; akun baru diset false saat daftar
   avatarColor   String   @default("#0A84FF")
   avatarUrl     String?
   divisionId    String?
@@ -100,6 +101,19 @@ model User {
   conversationsCreated Conversation[]       @relation("ConversationCreatedBy")
   conversationMembers  ConversationMember[]
   chatMessages         ChatMessage[]        @relation("ChatMessageSender")
+  emailVerifications   EmailVerification[]
+}
+
+// Kode verifikasi 6-digit yang dikirim ke email saat registrasi,
+// wajib dikonfirmasi user sebelum akunnya masuk antrean aktivasi Admin.
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model PasswordReset {
