@@ -46,7 +46,12 @@ export async function POST(req: NextRequest) {
       ok: true,
       userId: user.id,
       email: user.email,
-      emailWarning: sendResult.ok ? undefined : sendResult.reason,
+      emailWarning: sendResult.ok
+        ? undefined
+        : "Email verifikasi otomatis gagal terkirim. Gunakan kode yang ditampilkan di bawah ini.",
+      // Hanya dikirim ke client kalau email GAGAL terkirim, supaya pendaftaran tetap bisa
+      // dilanjutkan tanpa bergantung pada pengiriman email pihak ketiga.
+      verificationCode: sendResult.ok ? undefined : sendResult.code,
     });
   } catch (err: any) {
     console.error(err);
